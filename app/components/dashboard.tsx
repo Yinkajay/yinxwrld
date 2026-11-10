@@ -98,10 +98,10 @@ function StorageNotice({ message }: { message: string }) {
   );
 }
 
-function LoadingPanels() {
+function LoadingPanels({ showWeek }: { showWeek: boolean }) {
   return (
-    <div className="planner-grid" aria-label="Loading your planner" aria-busy="true">
-      {[0, 1].map((item) => (
+    <div className={`planner-grid${showWeek ? " is-two-periods" : " is-one-period"}`} aria-label="Loading your planner" aria-busy="true">
+      {(showWeek ? [0, 1] : [0]).map((item) => (
         <section className="task-panel loading-panel" key={item}>
           <div className="skeleton skeleton-heading" />
           <div className="skeleton skeleton-input" />
@@ -117,6 +117,7 @@ export default function Dashboard() {
   const { data, isLoaded, storageMessage, updateWorkspace } = useWorkspace();
   const [todayKey, setTodayKey] = useState<string | null>(null);
   const [combined, setCombined] = useState(false);
+  const [showWeek, setShowWeek] = useState(false);
   const [dayView, setDayView] = useState<"list" | "board">("list");
   const [weekView, setWeekView] = useState<"list" | "board">("list");
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -141,7 +142,6 @@ export default function Dashboard() {
   const historyTasks = selectedHistoryKey
     ? data.tasks.filter((task) => task.period === historyPeriod && task.periodKey === selectedHistoryKey)
     : [];
-  const completedToday = dayTasks.filter((task) => task.status === "done").length;
   const rolloverReviews = todayKey && weekKey ? findRolloverReviews(data, todayKey, weekKey) : [];
 
   function addTask(title: string, period: TaskPeriod, periodKey: string) {
@@ -192,26 +192,13 @@ export default function Dashboard() {
     });
   }
 
-  const totalTasks = dayTasks.length;
-  const completion = totalTasks ? Math.round((completedToday / totalTasks) * 100) : 0;
-
   return (
-    <div className="page-content dashboard-page">
+    <div className={`page-content dashboard-page${!showWeek && !combined ? " is-day-only" : ""}`}>
       <header className="page-heading dashboard-heading">
         <div className="heading-copy">
           <p className="eyebrow">{todayKey ? formatDayLabel(todayKey) : "YOUR PERSONAL SPACE"}</p>
           <h1>What’s on today?</h1>
-          <p className="page-subtitle">The things you want to get done, with your week in view.</p>
-        </div>
-        <div className="day-progress-card">
-          <div className="progress-topline">
-            <span>Today so far</span>
-            <span>{completedToday} of {totalTasks}</span>
-          </div>
-          <div className="progress-track" role="progressbar" aria-label="Today’s tasks completed" aria-valuemin={0} aria-valuemax={totalTasks || 1} aria-valuenow={completedToday}>
-            <span style={{ width: `${completion}%` }} />
-          </div>
-          <p>{totalTasks ? `${completion}% complete` : "Make space for what matters"}</p>
+          <p className="page-subtitle">One day at a time. Your week is here when you need it.</p>
         </div>
       </header>
 
@@ -229,10 +216,20 @@ export default function Dashboard() {
       <section className="planner-section" aria-labelledby="planner-heading">
         <header className="section-heading planner-section-heading">
           <div>
-            <p className="panel-kicker">YOUR PLAN</p>
-            <h2 id="planner-heading">The days ahead</h2>
+            <p className="panel-kicker">{combined ? "BOTH LISTS" : showWeek ? "TODAY AND THIS WEEK" : "TODAY"}</p>
+            <h2 id="planner-heading">{combined ? "Everything in motion" : showWeek ? "The days ahead" : "Your list"}</h2>
           </div>
           <div className="planner-heading-actions">
+            {!combined && (
+              <button
+                className={`button button-quiet show-week-button${showWeek ? " is-on" : ""}`}
+                type="button"
+                aria-pressed={showWeek}
+                onClick={() => setShowWeek((current) => !current)}
+              >
+                {showWeek ? "Today only" : "Show both"}
+              </button>
+            )}
             <button
               className={`button button-quiet history-button${historyOpen ? " is-on" : ""}`}
               type="button"
@@ -242,20 +239,22 @@ export default function Dashboard() {
             >
               {historyOpen ? "Close history" : "Look back"}
             </button>
-            <button
-              className={`button combine-button${combined ? " is-on" : ""}`}
-              type="button"
-              aria-pressed={combined}
-              onClick={() => setCombined((current) => !current)}
-            >
-              <span aria-hidden="true">{combined ? "↙" : "⇄"}</span>
-              {combined ? "Separate lists" : "Combine on a board"}
-            </button>
+            {(showWeek || combined) && (
+              <button
+                className={`button combine-button${combined ? " is-on" : ""}`}
+                type="button"
+                aria-pressed={combined}
+                onClick={() => setCombined((current) => !current)}
+              >
+                <span aria-hidden="true">{combined ? "↙" : "⇄"}</span>
+                {combined ? "Separate lists" : "Combine on a board"}
+              </button>
+            )}
           </div>
         </header>
 
         {!isLoaded || !todayKey || !weekKey ? (
-          <LoadingPanels />
+          <LoadingPanels showWeek={showWeek} />
         ) : combined ? (
           <section className="combined-board-panel" aria-label="Combined current tasks">
             <div className="combined-board-heading">
@@ -281,7 +280,7 @@ export default function Dashboard() {
             )}
           </section>
         ) : (
-          <div className="planner-grid">
+          <div className={`planner-grid${showWeek ? " is-two-periods" : " is-one-period"}`}>
             <TaskCollection
               period="day"
               periodKey={todayKey}
@@ -294,18 +293,20 @@ export default function Dashboard() {
               onUpdateTask={updateTask}
               onDeleteTask={deleteTask}
             />
-            <TaskCollection
-              period="week"
-              periodKey={weekKey}
-              title="This week"
-              detail={formatWeekRange(weekKey)}
-              tasks={weekTasks}
-              view={weekView}
-              onViewChange={setWeekView}
-              onAddTask={addTask}
-              onUpdateTask={updateTask}
-              onDeleteTask={deleteTask}
-            />
+            {showWeek && (
+              <TaskCollection
+                period="week"
+                periodKey={weekKey}
+                title="This week"
+                detail={formatWeekRange(weekKey)}
+                tasks={weekTasks}
+                view={weekView}
+                onViewChange={setWeekView}
+                onAddTask={addTask}
+                onUpdateTask={updateTask}
+                onDeleteTask={deleteTask}
+              />
+            )}
           </div>
         )}
       </section>

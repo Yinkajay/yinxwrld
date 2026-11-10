@@ -25,7 +25,6 @@ export default function DailyFooter() {
           “{item.text}”{item.byline ? ` — ${item.byline}` : ""}
         </span>
       </div>
-      <p className="footer-privacy">Your lists stay in this browser. They are not synced to another device.</p>
     </footer>
   );
 }

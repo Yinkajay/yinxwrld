@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Daybook | Your personal workspace",
+  title: "yinxwrld | Your personal workspace",
   description: "A quiet space to plan your days and keep creative ideas moving.",
 };
 

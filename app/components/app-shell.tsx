@@ -11,14 +11,15 @@ const navigation = [
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isCreativePage = pathname.startsWith("/creative");
 
   return (
-    <div className="app-frame">
+    <div className={`app-frame ${isCreativePage ? "scene-winter" : "scene-sunset"}`}>
+      <div className="scene-background" aria-hidden="true" />
       <header className="site-header">
         <div className="site-header-inner">
-          <Link className="brand" href="/" aria-label="Daybook home">
-            <span className="brand-mark" aria-hidden="true">d.</span>
-            <span>daybook</span>
+          <Link className="brand" href="/" aria-label="yinxwrld home">
+            <span className="brand-logo" aria-hidden="true" />
           </Link>
 
           <nav className="site-nav" aria-label="Main navigation">
