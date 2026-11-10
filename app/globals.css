@@ -6,8 +6,8 @@
   --surface: #fffefa;
   --surface-soft: #f9f8f2;
   --foreground: #292b25;
-  --muted: #777a70;
-  --subtle: #a0a196;
+  --muted: #595c52;
+  --subtle: #707269;
   --line: #e6e5dc;
   --line-strong: #d8d8cb;
   --accent: #66764f;
@@ -184,7 +184,7 @@ button:disabled {
 .scene-sunset .footer-label,
 .scene-sunset .footer-text {
   color: white;
-  text-shadow: 0 1px 8px rgb(0 0 0 / 70%);
+  text-shadow: 0 2px 12px rgb(20 15 45 / 90%), 0 1px 3px rgb(20 15 45 / 95%);
 }
 
 .scene-winter .site-nav-link {
@@ -194,14 +194,14 @@ button:disabled {
 
 .scene-winter .footer-label,
 .scene-winter .footer-text {
-  color: #202c3b;
-  text-shadow: 0 1px 6px rgb(255 255 255 / 70%);
+  color: #172437;
+  text-shadow: 0 1px 3px rgb(255 255 255 / 98%), 0 0 12px rgb(255 255 255 / 95%);
 }
 
 .main-content {
   width: 100%;
   min-height: calc(100vh - 64px);
-  padding-bottom: 32px;
+  padding-bottom: 112px;
 }
 
 .page-content {
@@ -402,6 +402,22 @@ button:disabled {
 
 .dashboard-page .planner-heading-actions {
   justify-content: center;
+}
+
+.page-heading .eyebrow,
+.page-heading h1,
+.page-heading .page-subtitle,
+.planner-section-heading .panel-kicker,
+.planner-section-heading h2 {
+  color: #fff;
+  text-shadow: 0 2px 12px rgb(20 15 45 / 85%), 0 1px 3px rgb(20 15 45 / 95%);
+}
+
+.dashboard-page .planner-heading-actions .button-quiet,
+.dashboard-page .planner-heading-actions .combine-button {
+  border-color: rgb(255 255 255 / 82%);
+  background: rgb(255 254 250 / 94%);
+  color: #42443b;
 }
 
 .dashboard-page .planner-grid.is-one-period {
@@ -715,12 +731,12 @@ button:disabled {
 .task-title {
   overflow-wrap: anywhere;
   color: #42443b;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 16px;
+  line-height: 24px;
 }
 
 .task-item.is-done .task-title {
-  color: #999b91;
+  color: #707269;
   text-decoration: line-through;
   text-decoration-color: #a9ab9f;
 }
@@ -856,8 +872,9 @@ button:disabled {
 }
 
 .empty-state > span:last-child {
-  color: #929389;
-  font-size: 12px;
+  color: #686a61;
+  font-size: 14px;
+  line-height: 20px;
 }
 
 .panel-footnote {
@@ -866,8 +883,9 @@ button:disabled {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid #efeee8;
-  color: #929389;
-  font-size: 12px;
+  color: #686a61;
+  font-size: 14px;
+  line-height: 20px;
 }
 
 .kanban-board {
@@ -965,7 +983,7 @@ button:disabled {
 
 .column-empty {
   margin: 18px 4px 0;
-  color: #a3a49a;
+  color: #686a61;
   font-size: 12px;
   text-align: center;
 }
@@ -1027,7 +1045,7 @@ button:disabled {
   bottom: 0;
   left: 0;
   display: flex;
-  min-height: 56px;
+  min-height: 88px;
   align-items: center;
   justify-content: center;
   gap: 8px 24px;
@@ -1046,30 +1064,28 @@ button:disabled {
 }
 
 .footer-label {
-  color: #85877d;
-  font-size: 12px;
-  line-height: 16px;
+  color: #fff;
+  font-size: 14px;
+  line-height: 20px;
 }
 
 .footer-text {
-  display: -webkit-box;
+  display: block;
   min-width: 0;
-  max-width: 800px;
+  max-width: 880px;
   flex: 0 1 auto;
-  overflow: hidden;
-  color: #55574d;
-  font-size: 12px;
-  line-height: 16px;
-  text-overflow: ellipsis;
+  color: #fff;
+  font-size: 16px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
   text-align: center;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  text-shadow: 0 2px 12px rgb(20 15 45 / 90%), 0 1px 3px rgb(20 15 45 / 95%);
 }
 
 .local-data-caption {
   margin: 16px 0 0;
-  color: #929389;
-  font-size: 12px;
+  color: #686a61;
+  font-size: 14px;
   text-align: center;
 }
 
@@ -1171,13 +1187,13 @@ button:disabled {
 }
 
 .history-list li.is-done .history-task-title {
-  color: #929389;
+  color: #707269;
   text-decoration: line-through;
 }
 
 .history-status-label {
-  color: #8d8f84;
-  font-size: 12px;
+  color: #686a61;
+  font-size: 14px;
 }
 
 .history-status-label.status-label-done {
@@ -1348,15 +1364,15 @@ button:disabled {
 .idea-card > p {
   min-height: 40px;
   margin: 8px 0 16px;
-  color: #77796f;
-  font-size: 14px;
-  line-height: 20px;
+  color: #595c52;
+  font-size: 16px;
+  line-height: 24px;
   overflow-wrap: anywhere;
   text-wrap: pretty;
 }
 
 .project-notes.is-empty {
-  color: #a0a196;
+  color: #707269;
 }
 
 .card-action-row {
@@ -1393,7 +1409,7 @@ button:disabled {
   flex-direction: column;
   gap: 4px;
   color: #65675d;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -1426,7 +1442,7 @@ button:disabled {
 
 .optional-label {
   margin-left: 4px;
-  color: #9a9b91;
+  color: #707269;
   font-weight: 400;
 }
 
