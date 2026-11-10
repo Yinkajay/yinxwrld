@@ -241,9 +241,9 @@ export default function CreativeWorkspace() {
     <div className="page-content creative-page">
       <header className="page-heading creative-heading">
         <div className="heading-copy">
-          <p className="eyebrow">MAKE A LITTLE ROOM</p>
-          <h1>Keep the ideas close.</h1>
-          <p className="page-subtitle">A place for the things you want to make, explore, and come back to.</p>
+          <p className="eyebrow">FOR THE FUN STUFF</p>
+          <h1>Things I want to make.</h1>
+          <p className="page-subtitle">Projects, early ideas, and things to come back to.</p>
         </div>
         <div className="creative-stats" aria-label="Creative workspace totals">
           <div><strong>{data.projects.length}</strong><span>projects</span></div>
@@ -327,7 +327,6 @@ export default function CreativeWorkspace() {
           )}
         </section>
       </div>
-      <p className="local-data-caption">Projects and ideas are saved in this browser only.</p>
     </div>
   );
 }

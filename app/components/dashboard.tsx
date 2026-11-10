@@ -7,7 +7,6 @@ import {
   createId,
   formatDayLabel,
   formatWeekRange,
-  getDailyFooterItem,
   getLagosDayKey,
   getWeekStartKey,
   type Task,
@@ -87,25 +86,6 @@ function CarryoverPrompt({
         </div>
       </div>
     </section>
-  );
-}
-
-function DailyNote({ dayKey }: { dayKey: string }) {
-  const item = getDailyFooterItem(dayKey);
-  return (
-    <aside className="daily-note" aria-label="A thought for today">
-      <div className="note-spark" aria-hidden="true">✳</div>
-      <div className="daily-note-copy">
-        <p className="panel-kicker">A LITTLE SOMETHING FOR TODAY</p>
-        <blockquote>{item.text}</blockquote>
-        {item.kind === "thought" && item.byline ? (
-          <p className="note-byline">{item.byline}</p>
-        ) : (
-          <p className="note-byline">A moment to reflect</p>
-        )}
-      </div>
-      <span className="note-kind">{item.kind === "thought" ? "Thought" : "Prompt"}</span>
-    </aside>
   );
 }
 
@@ -220,8 +200,8 @@ export default function Dashboard() {
       <header className="page-heading dashboard-heading">
         <div className="heading-copy">
           <p className="eyebrow">{todayKey ? formatDayLabel(todayKey) : "YOUR PERSONAL SPACE"}</p>
-          <h1>A little more on purpose.</h1>
-          <p className="page-subtitle">A clear view of what matters today and this week.</p>
+          <h1>What’s on today?</h1>
+          <p className="page-subtitle">The things you want to get done, with your week in view.</p>
         </div>
         <div className="day-progress-card">
           <div className="progress-topline">
@@ -374,8 +354,6 @@ export default function Dashboard() {
         </section>
       )}
 
-      {todayKey && <DailyNote dayKey={todayKey} />}
-      <p className="local-data-caption">Your lists stay in this browser. They are not synced to another device.</p>
     </div>
   );
 }
