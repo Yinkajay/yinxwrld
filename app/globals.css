@@ -90,13 +90,6 @@ button:disabled {
   background-size: cover;
 }
 
-.scene-background::after {
-  position: absolute;
-  inset: 0;
-  background: rgb(244 243 237 / 42%);
-  content: "";
-}
-
 .scene-sunset .scene-background {
   background-image: url("/bgs/sunset-meadow.png");
 }
@@ -109,9 +102,7 @@ button:disabled {
   position: sticky;
   top: 0;
   z-index: 20;
-  border-bottom: 1px solid var(--line);
-  background: rgb(244 243 237 / 84%);
-  backdrop-filter: blur(12px);
+  background: transparent;
 }
 
 .site-header-inner {
@@ -156,6 +147,7 @@ button:disabled {
 }
 
 .site-nav-link {
+  position: relative;
   display: inline-flex;
   min-height: 36px;
   align-items: center;
@@ -169,14 +161,41 @@ button:disabled {
 }
 
 .site-nav-link:hover {
-  background: #eeede6;
-  color: var(--foreground);
+  background: transparent;
+  opacity: 0.82;
 }
 
 .site-nav-link.is-active {
-  background: var(--accent-soft);
-  color: var(--accent-dark);
+  background: transparent;
   font-weight: 600;
+}
+
+.site-nav-link.is-active::after {
+  position: absolute;
+  right: 10px;
+  bottom: 2px;
+  left: 10px;
+  height: 1px;
+  background: currentColor;
+  content: "";
+}
+
+.scene-sunset .site-nav-link,
+.scene-sunset .footer-label,
+.scene-sunset .footer-text {
+  color: white;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 70%);
+}
+
+.scene-winter .site-nav-link {
+  color: white;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 70%);
+}
+
+.scene-winter .footer-label,
+.scene-winter .footer-text {
+  color: #202c3b;
+  text-shadow: 0 1px 6px rgb(255 255 255 / 70%);
 }
 
 .main-content {
@@ -1013,9 +1032,7 @@ button:disabled {
   justify-content: center;
   gap: 8px 24px;
   padding: 8px max(24px, calc((100vw - 1344px) / 2));
-  border-top: 1px solid var(--line);
-  background: rgb(255 254 250 / 84%);
-  backdrop-filter: blur(12px);
+  background: transparent;
 }
 
 .footer-thought {
