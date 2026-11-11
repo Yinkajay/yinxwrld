@@ -1,6 +1,7 @@
 import "server-only";
 import { MongoClient, type Collection } from "mongodb";
 import type { WorkspaceData } from "@/app/lib/workspace";
+import { normalizeMongoSetting } from "./mongodb-settings";
 
 type StoredWorkspace = {
   _id: "personal";
@@ -14,7 +15,7 @@ type MongoGlobal = typeof globalThis & {
 };
 
 export async function getWorkspaceCollection(): Promise<Collection<StoredWorkspace>> {
-  const uri = process.env.MONGODB_URI;
+  const uri = normalizeMongoSetting(process.env.MONGODB_URI, "MONGODB_URI");
   if (!uri) throw new Error("MONGODB_URI is not configured.");
 
   const globalWithMongo = globalThis as MongoGlobal;
@@ -31,6 +32,6 @@ export async function getWorkspaceCollection(): Promise<Collection<StoredWorkspa
   }
 
   const client = await globalWithMongo.yinxwrldMongoClient;
-  const database = process.env.MONGODB_DB || "yinxwrld";
+  const database = normalizeMongoSetting(process.env.MONGODB_DB, "MONGODB_DB") || "yinxwrld";
   return client.db(database).collection<StoredWorkspace>("workspace");
 }

@@ -28,6 +28,8 @@ Netlify's standard Functions use changing outbound IP addresses, so this setup u
 
 `MONGODB_DB` is a database name, not a credential. If Netlify marks its value as a secret, it can flag ordinary mentions of the app name and block deployment. `netlify.toml` excludes only `MONGODB_DB` from secret scanning; `MONGODB_URI` remains protected. Keep database credentials out of client code and tracked files.
 
+If `/api/workspace` returns 503, its `code` identifies the setup failure without returning credentials. `MONGODB_URI_MISSING` means the variable is unavailable to the function. `MONGODB_URI_INVALID` means the value cannot be parsed: copy the working connection-string value from `.env.local` into Netlify, then redeploy. Simple surrounding quotes or an accidentally pasted `MONGODB_URI=` prefix are normalized on the server. Authentication and connection failures have separate codes for checking the database user and Atlas network access respectively.
+
 ## Workspace storage and sync behavior
 
 MongoDB is the only ongoing persistent store. The browser does not keep an offline workspace copy. If MongoDB is unavailable, the app shows a connection message and does not save edits on that device. Retry after the database connection is restored.
