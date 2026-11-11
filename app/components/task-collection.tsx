@@ -4,6 +4,8 @@ import { useId, useState, type DragEvent, type FormEvent } from "react";
 import type { Task, TaskPeriod, TaskStatus } from "@/app/lib/workspace";
 import type { TaskChange } from "@/app/lib/planner";
 import TaskMenu, { type TaskMenuAction } from "./task-menu";
+import { CategoryBadge, CategoryFilter, CategoryInput } from "./category-controls";
+import { filterByCategory } from "@/app/lib/workspace";
 
 const statuses: { value: TaskStatus; label: string }[] = [
   { value: "todo", label: "To do" },
@@ -30,14 +32,16 @@ function TaskItem({
   onUpdate,
   onDelete,
   context,
-}: TaskActions & { task: Task; sourceLabel?: string }) {
+  categories,
+}: TaskActions & { task: Task; sourceLabel?: string; categories: string[] }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [draft, setDraft] = useState(task.title);
+  const [draftCategory, setDraftCategory] = useState(task.category ?? "");
   const editId = useId();
   const deleteLabel = task.period === "week" ? "Delete weekly task" : "Delete task";
   const menuActions: TaskMenuAction[] = [
-    { label: "Edit", onSelect: () => { setDraft(task.title); setIsEditing(true); } },
+    { label: "Edit", onSelect: () => { setDraft(task.title); setDraftCategory(task.category ?? ""); setIsEditing(true); } },
   ];
   if (context && task.period === "day" && task.periodKey === context.todayKey) {
     menuActions.push({ label: "Move to this week", onSelect: () => context.onMoveToWeek(task.id) });
@@ -54,7 +58,7 @@ function TaskItem({
     event.preventDefault();
     const title = draft.trim();
     if (!title) return;
-    onUpdate(task.id, { title });
+    onUpdate(task.id, { title, category: draftCategory.trim() || undefined });
     setIsEditing(false);
   }
 
@@ -81,12 +85,20 @@ function TaskItem({
               onChange={(event) => setDraft(event.target.value)}
               maxLength={180}
             />
+            <CategoryInput
+              id={`${editId}-category`}
+              value={draftCategory}
+              categories={categories}
+              onChange={setDraftCategory}
+              className="task-edit-category"
+            />
             <button className="text-button" type="submit" disabled={!draft.trim()}>Save</button>
-            <button className="text-button muted-button" type="button" onClick={() => { setDraft(task.title); setIsEditing(false); }}>Cancel</button>
+            <button className="text-button muted-button" type="button" onClick={() => { setDraft(task.title); setDraftCategory(task.category ?? ""); setIsEditing(false); }}>Cancel</button>
           </form>
         ) : (
           <>
             <span className="task-title">{task.title}</span>
+            <CategoryBadge category={task.category} />
             {sourceLabel && <span className="task-origin">{sourceLabel}</span>}
           </>
         )}
@@ -119,12 +131,14 @@ function TaskItem({
 export function TaskBoard({
   tasks,
   sourceLabel,
+  categories,
   onUpdate,
   onDelete,
   context,
 }: TaskActions & {
   tasks: Task[];
   sourceLabel?: (task: Task) => string;
+  categories: string[];
 }) {
   function dropTask(event: DragEvent<HTMLDivElement>, status: TaskStatus) {
     event.preventDefault();
@@ -164,6 +178,7 @@ export function TaskBoard({
                       <TaskItem
                         task={task}
                         sourceLabel={sourceLabel?.(task)}
+                        categories={categories}
                         onUpdate={(taskId, change) => onUpdate(taskId, change)}
                         onDelete={onDelete}
                         context={context}
@@ -194,6 +209,9 @@ export function TaskCollection({
   onUpdateTask,
   onDeleteTask,
   context,
+  categories,
+  selectedCategory,
+  onCategoryChange,
 }: {
   period: TaskPeriod;
   periodKey: string;
@@ -202,21 +220,27 @@ export function TaskCollection({
   tasks: Task[];
   view: "list" | "board";
   onViewChange: (view: "list" | "board") => void;
-  onAddTask: (title: string, period: TaskPeriod, periodKey: string) => void;
+  onAddTask: (title: string, period: TaskPeriod, periodKey: string, category: string) => void;
   onUpdateTask: (taskId: string, change: TaskChange) => void;
   onDeleteTask: (taskId: string) => void;
   context?: TaskContextActions;
+  categories: string[];
+  selectedCategory: string;
+  onCategoryChange: (category: string) => void;
 }) {
   const [newTask, setNewTask] = useState("");
+  const [newTaskCategory, setNewTaskCategory] = useState("");
   const titleId = useId();
+  const visibleTasks = filterByCategory(tasks, selectedCategory);
   const sourceLabel = (task: Task) => period === "day" && task.period === "week" ? "From this week’s list" : "";
 
   function submitTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const title = newTask.trim();
     if (!title) return;
-    onAddTask(title, period, periodKey);
+    onAddTask(title, period, periodKey, newTaskCategory);
     setNewTask("");
+    setNewTaskCategory("");
   }
 
   return (
@@ -227,9 +251,17 @@ export function TaskCollection({
           <h2 id={titleId}>{title}</h2>
           <p className="panel-detail">{detail}</p>
         </div>
-        <div className="view-toggle" role="group" aria-label={`View ${title}`}>
-          <button type="button" aria-pressed={view === "list"} className={view === "list" ? "is-selected" : ""} onClick={() => onViewChange("list")}>List</button>
-          <button type="button" aria-pressed={view === "board"} className={view === "board" ? "is-selected" : ""} onClick={() => onViewChange("board")}>Board</button>
+        <div className="task-panel-tools">
+          <CategoryFilter
+            id={`${titleId}-category-filter`}
+            value={selectedCategory}
+            categories={categories}
+            onChange={onCategoryChange}
+          />
+          <div className="view-toggle" role="group" aria-label={`View ${title}`}>
+            <button type="button" aria-pressed={view === "list"} className={view === "list" ? "is-selected" : ""} onClick={() => onViewChange("list")}>List</button>
+            <button type="button" aria-pressed={view === "board"} className={view === "board" ? "is-selected" : ""} onClick={() => onViewChange("board")}>Board</button>
+          </div>
         </div>
       </header>
 
@@ -243,29 +275,42 @@ export function TaskCollection({
           placeholder={period === "day" ? "Add something for today" : "Add something for this week"}
           maxLength={180}
         />
+        <CategoryInput
+          id={`${titleId}-new-category`}
+          value={newTaskCategory}
+          categories={categories}
+          onChange={setNewTaskCategory}
+          className="add-task-category"
+        />
         <button type="submit" disabled={!newTask.trim()}>Add</button>
       </form>
 
-      {tasks.length === 0 ? (
+      {visibleTasks.length === 0 && tasks.length === 0 ? (
         <div className="empty-state">
           <span className="empty-mark" aria-hidden="true">{period === "day" ? "○" : "✳"}</span>
           <p>{period === "day" ? "A clear day starts here." : "Your week is open."}</p>
           <span>Add a task when you are ready.</span>
         </div>
+      ) : visibleTasks.length === 0 ? (
+        <div className="empty-state filtered-empty-state">
+          <span className="empty-mark" aria-hidden="true">⌕</span>
+          <p>No {title.toLowerCase()} in {selectedCategory}.</p>
+          <button className="text-button" type="button" onClick={() => onCategoryChange("")}>Show all categories</button>
+        </div>
       ) : view === "list" ? (
         <ul className="task-list">
-          {tasks.map((task) => (
+          {visibleTasks.map((task) => (
             <li key={task.id}>
-              <TaskItem task={task} sourceLabel={sourceLabel(task)} context={context} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
+              <TaskItem task={task} sourceLabel={sourceLabel(task)} context={context} categories={categories} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
             </li>
           ))}
         </ul>
       ) : (
-        <TaskBoard tasks={tasks} sourceLabel={sourceLabel} context={context} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
+        <TaskBoard tasks={visibleTasks} sourceLabel={sourceLabel} context={context} categories={categories} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
       )}
       <div className="panel-footnote">
-        <span>{tasks.length} {tasks.length === 1 ? "task" : "tasks"}</span>
-        <span>{tasks.filter((task) => task.status === "done").length} done</span>
+        <span>{visibleTasks.length} {visibleTasks.length === 1 ? "task" : "tasks"}</span>
+        <span>{visibleTasks.filter((task) => task.status === "done").length} done</span>
       </div>
     </section>
   );

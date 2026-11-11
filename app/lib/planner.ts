@@ -1,6 +1,6 @@
 import { getLagosDayKey, getWeekStartKey, type Task } from "./workspace";
 
-export type TaskChange = Partial<Pick<Task, "title" | "status">>;
+export type TaskChange = Partial<Pick<Task, "title" | "status" | "category">>;
 
 export function selectPlannerTasks(tasks: Task[], today: string | null) {
   if (!today) return { dayTasks: [], weekTasks: [], currentTasks: [] };

@@ -574,6 +574,37 @@ button:disabled {
   margin-bottom: 20px;
 }
 
+.task-panel-tools,
+.combined-board-tools,
+.project-heading-tools {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.category-filter {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.category-filter select {
+  min-width: 0;
+  max-width: 148px;
+  min-height: 34px;
+  padding: 4px 26px 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgb(255 254 250 / 88%);
+  color: var(--foreground);
+  font-size: 12px;
+}
+
 .task-panel-heading h2 {
   margin: 4px 0 0;
   font-size: 24px;
@@ -622,7 +653,8 @@ button:disabled {
 }
 
 .add-task-form {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(145px, 190px) auto;
   min-height: 44px;
   align-items: center;
   gap: 8px;
@@ -655,6 +687,59 @@ button:disabled {
   font-size: 14px;
 }
 
+.category-input {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.category-input input {
+  min-width: 0;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgb(255 255 255 / 86%);
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.category-input input::placeholder {
+  color: #8c8e83;
+}
+
+.add-task-form .add-task-category {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px;
+}
+
+.add-task-form .add-task-category input {
+  padding: 5px 6px;
+  background: transparent;
+  font-size: 12px;
+}
+
+.category-badge {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid #e7e5dc;
+  border-radius: 999px;
+  background: #f3f1e9;
+  color: #65675d;
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
 .add-task-form input::placeholder,
 .entry-form input::placeholder,
 .entry-form textarea::placeholder {
@@ -663,6 +748,11 @@ button:disabled {
 
 .add-task-form input:focus-visible {
   outline: 0;
+}
+
+.add-task-form .category-input input:focus-visible {
+  outline: 2px solid rgb(102 118 79 / 55%);
+  outline-offset: 1px;
 }
 
 .add-task-form button {
@@ -925,10 +1015,22 @@ button:disabled {
 }
 
 .inline-edit-form {
-  display: flex;
+  display: grid;
   width: 100%;
   align-items: center;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 4px 6px;
+}
+
+.inline-edit-form .task-edit-category {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.inline-edit-form .task-edit-category input {
+  width: 100%;
+  padding: 4px 6px;
 }
 
 .inline-edit-form input {
@@ -1088,6 +1190,11 @@ button:disabled {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
+}
+
+.combined-board-tools {
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .combined-board-heading h3 {
@@ -1441,6 +1548,10 @@ button:disabled {
   text-wrap: pretty;
 }
 
+.project-card > .category-badge {
+  margin-top: 8px;
+}
+
 .project-notes,
 .idea-card > p {
   min-height: 40px;
@@ -1492,6 +1603,13 @@ button:disabled {
   color: #65675d;
   font-size: 14px;
   font-weight: 600;
+}
+
+.entry-form .category-input,
+.project-edit-form .category-input {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .entry-form input,
@@ -1785,6 +1903,36 @@ button:disabled {
     align-items: flex-start;
   }
 
+  .task-panel-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .add-task-form {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .add-task-form .add-task-category {
+    grid-column: 2;
+    grid-row: 2;
+    width: 100%;
+  }
+
+  .add-task-form > button {
+    grid-column: 3;
+    grid-row: 1 / 3;
+    align-self: center;
+  }
+
+  .combined-board-tools,
+  .project-heading-tools {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
   .task-panel-heading h2 {
     font-size: 20px;
     line-height: 28px;
@@ -1900,6 +2048,14 @@ button:disabled {
 
   .creative-section-heading {
     flex-direction: column;
+  }
+
+  .creative-section-heading .project-heading-tools {
+    align-items: flex-start;
+  }
+
+  .category-filter select {
+    max-width: 116px;
   }
 }
 

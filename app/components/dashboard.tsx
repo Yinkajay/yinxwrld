@@ -9,11 +9,15 @@ import {
   formatWeekRange,
   getLagosDayKey,
   getWeekStartKey,
+  addCustomCategory,
+  filterByCategory,
+  normalizeCategoryName,
   type Task,
   type TaskPeriod,
   type WorkspaceData,
 } from "@/app/lib/workspace";
 import { TaskBoard, TaskCollection } from "@/app/components/task-collection";
+import { CategoryFilter } from "@/app/components/category-controls";
 import StorageNotice from "@/app/components/storage-notice";
 import { changeTask, copyTaskToPeriod, moveDailyTaskToWeek, selectPlannerTasks, setWeeklyDismissal, type TaskChange } from "@/app/lib/planner";
 
@@ -144,6 +148,9 @@ export default function Dashboard() {
   const [showWeek, setShowWeek] = useState(false);
   const [dayView, setDayView] = useState<"list" | "board">("list");
   const [weekView, setWeekView] = useState<"list" | "board">("list");
+  const [dayCategory, setDayCategory] = useState("");
+  const [weekCategory, setWeekCategory] = useState("");
+  const [combinedCategory, setCombinedCategory] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyPeriod, setHistoryPeriod] = useState<TaskPeriod>("day");
   const [historySelection, setHistorySelection] = useState("");
@@ -187,7 +194,9 @@ export default function Dashboard() {
   }, []);
 
   const weekKey = todayKey ? getWeekStartKey(todayKey) : null;
+  const categories = data.categories ?? [];
   const { dayTasks, weekTasks, currentTasks } = selectPlannerTasks(data.tasks, todayKey);
+  const visibleCurrentTasks = filterByCategory(currentTasks, combinedCategory);
   const pastDayKeys = [...new Set(data.tasks.filter((task) => task.period === "day" && task.periodKey !== todayKey).map((task) => task.periodKey))].sort().reverse();
   const pastWeekKeys = [...new Set(data.tasks.filter((task) => task.period === "week" && task.periodKey !== weekKey).map((task) => task.periodKey))].sort().reverse();
   const historyKeys = historyPeriod === "day" ? pastDayKeys : pastWeekKeys;
@@ -197,7 +206,7 @@ export default function Dashboard() {
     : [];
   const rolloverReviews = todayKey && weekKey ? findRolloverReviews(data, todayKey, weekKey) : [];
 
-  function addTask(title: string, period: TaskPeriod, periodKey: string) {
+  function addTask(title: string, period: TaskPeriod, periodKey: string, categoryInput: string) {
     const now = new Date().toISOString();
     const task: Task = {
       id: createId(),
@@ -208,15 +217,27 @@ export default function Dashboard() {
       createdAt: now,
       updatedAt: now,
     };
-    updateWorkspace((current) => ({ ...current, tasks: [...current.tasks, task] }));
+    updateWorkspace((current) => {
+      const category = normalizeCategoryName(categoryInput, current.categories ?? []);
+      return {
+        ...current,
+        categories: addCustomCategory(current.categories ?? [], category),
+        tasks: [...current.tasks, category ? { ...task, category } : task],
+      };
+    });
   }
 
   function updateTask(taskId: string, change: TaskChange) {
     const now = new Date().toISOString();
-    updateWorkspace((current) => ({
-      ...current,
-      tasks: changeTask(current.tasks, taskId, change, now),
-    }));
+    updateWorkspace((current) => {
+      const hasCategory = Object.prototype.hasOwnProperty.call(change, "category");
+      const category = hasCategory ? normalizeCategoryName(change.category ?? "", current.categories ?? []) : undefined;
+      return {
+        ...current,
+        categories: hasCategory ? addCustomCategory(current.categories ?? [], category) : current.categories,
+        tasks: changeTask(current.tasks, taskId, hasCategory ? { ...change, category } : change, now),
+      };
+    });
   }
 
   function moveToWeek(taskId: string) {
@@ -321,16 +342,26 @@ export default function Dashboard() {
                 <h3>Everything in motion</h3>
                 <p>Today and this week, together.</p>
               </div>
-              <span className="task-total-pill">{currentTasks.length} {currentTasks.length === 1 ? "task" : "tasks"}</span>
+              <div className="combined-board-tools">
+                <CategoryFilter id="combined-category-filter" value={combinedCategory} categories={categories} onChange={setCombinedCategory} />
+                <span className="task-total-pill">{visibleCurrentTasks.length} {visibleCurrentTasks.length === 1 ? "task" : "tasks"}</span>
+              </div>
             </div>
-            {currentTasks.length ? (
+            {visibleCurrentTasks.length ? (
               <TaskBoard
-                tasks={currentTasks}
+                tasks={visibleCurrentTasks}
                 sourceLabel={(task) => task.period === "day" ? "Today" : "This week"}
                 onUpdate={updateTask}
                 onDelete={deleteTask}
                 context={taskContext}
+                categories={categories}
               />
+            ) : currentTasks.length ? (
+              <div className="combined-empty empty-state">
+                <span className="empty-mark" aria-hidden="true">⌕</span>
+                <p>No tasks in {combinedCategory}.</p>
+                <button className="text-button" type="button" onClick={() => setCombinedCategory("")}>Show all categories</button>
+              </div>
             ) : (
               <div className="combined-empty empty-state">
                 <span className="empty-mark" aria-hidden="true">⇄</span>
@@ -347,6 +378,9 @@ export default function Dashboard() {
               title="Today"
               detail={formatDayLabel(todayKey, { weekday: undefined })}
               tasks={dayTasks}
+              categories={categories}
+              selectedCategory={dayCategory}
+              onCategoryChange={setDayCategory}
               view={dayView}
               onViewChange={setDayView}
               onAddTask={addTask}
@@ -361,6 +395,9 @@ export default function Dashboard() {
                 title="This week"
                 detail={formatWeekRange(weekKey)}
                 tasks={weekTasks}
+                categories={categories}
+                selectedCategory={weekCategory}
+                onCategoryChange={setWeekCategory}
                 view={weekView}
                 onViewChange={setWeekView}
                 onAddTask={addTask}

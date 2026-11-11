@@ -79,13 +79,14 @@ test("reopening respects a dismissal already made today", () => {
 });
 
 test("moving a daily task preserves its identity, text, status, and creation time", () => {
-  const daily = task("daily", { period: "day", periodKey: today, status: "doing" });
+  const daily = task("daily", { period: "day", periodKey: today, status: "doing", category: "Personal" });
   const moved = planner.moveDailyTaskToWeek([daily], daily.id, now);
   assert.equal(moved.length, 1);
   assert.equal(moved[0].id, daily.id);
   assert.equal(moved[0].title, daily.title);
   assert.equal(moved[0].status, daily.status);
   assert.equal(moved[0].createdAt, daily.createdAt);
+  assert.equal(moved[0].category, "Personal");
   assert.equal(moved[0].period, "week");
   assert.equal(moved[0].periodKey, "2026-11-09");
   const selected = planner.selectPlannerTasks(moved, today);
@@ -116,6 +117,7 @@ test("Monday excludes the old week; an explicit carry-forward clears metadata", 
   assert.equal(copied.dismissedOn, undefined);
   assert.equal(copied.completedAt, undefined);
   assert.equal(copied.carriedFrom, source.id);
+  assert.equal(copied.category, source.category);
   assert.deepEqual(ids(planner.selectPlannerTasks([source, copied], "2026-11-16").dayTasks), [copied.id]);
 });
 
@@ -127,4 +129,44 @@ test("old saved tasks validate; malformed new metadata is rejected", () => {
     assert.equal(workspace.isWorkspaceData({ ...data, tasks: [task("invalid", extra)] }), false);
   }
   assert.equal(workspace.isWorkspaceData({ ...data, tasks: [task("valid", { dismissedOn: today, completedAt: now })] }), true);
+});
+
+test("built-in and custom category names are shared, trimmed, and deduplicated", () => {
+  assert.deepEqual(workspace.getCategoryOptions(["Art", "work", "Home"]), ["Personal", "Work", "Creative", "Home", "Art"]);
+  assert.equal(workspace.normalizeCategoryName(" personal ", []), "Personal");
+  assert.equal(workspace.normalizeCategoryName("  side   project ", ["Side Project"]), "Side Project");
+  assert.deepEqual(workspace.addCustomCategory(["Art"], "Art"), ["Art"]);
+  assert.deepEqual(workspace.addCustomCategory(["Art"], "Design"), ["Art", "Design"]);
+});
+
+test("category filters match the selected category and always retain uncategorized items", () => {
+  const items = [
+    { id: "personal", category: "Personal" },
+    { id: "work", category: "Work" },
+    { id: "uncategorized" },
+  ];
+  assert.deepEqual(ids(workspace.filterByCategory(items, "Personal")), ["personal", "uncategorized"]);
+  assert.deepEqual(ids(workspace.filterByCategory(items, "")), ["personal", "work", "uncategorized"]);
+});
+
+test("category fields and saved custom categories validate while old workspace data remains valid", () => {
+  const oldData = { ...workspace.emptyWorkspace(), tasks: [task("old")] };
+  delete oldData.categories;
+  assert.equal(workspace.isWorkspaceData(oldData), true);
+  const project = { id: "project", title: "Film", notes: "", status: "planned", createdAt: now, updatedAt: now, category: "Creative" };
+  const categorized = {
+    ...oldData,
+    categories: ["Art"],
+    tasks: [task("new", { category: "Art" })],
+    projects: [project],
+  };
+  assert.equal(workspace.isWorkspaceData(categorized), true);
+  assert.equal(workspace.isWorkspaceData(JSON.parse(JSON.stringify(categorized))), true);
+  for (const extra of [
+    { tasks: [task("blank", { category: " " })], categories: [] },
+    { projects: [{ ...project, category: 12 }], categories: [] },
+    { categories: ["Art", "art"] },
+  ]) {
+    assert.equal(workspace.isWorkspaceData({ ...categorized, ...extra }), false);
+  }
 });

@@ -3,8 +3,12 @@
 import { useState, type FormEvent } from "react";
 import { useWorkspace } from "@/app/hooks/use-workspace";
 import StorageNotice from "@/app/components/storage-notice";
+import { CategoryBadge, CategoryFilter, CategoryInput } from "@/app/components/category-controls";
 import {
+  addCustomCategory,
   createId,
+  filterByCategory,
+  normalizeCategoryName,
   type CreativeIdea,
   type CreativeProject,
   type ProjectStatus,
@@ -19,22 +23,25 @@ const projectStatuses: { value: ProjectStatus; label: string }[] = [
 
 function ProjectCard({
   project,
+  categories,
   onUpdate,
   onDelete,
 }: {
   project: CreativeProject;
-  onUpdate: (projectId: string, change: Partial<Pick<CreativeProject, "title" | "notes" | "status">>) => void;
+  categories: string[];
+  onUpdate: (projectId: string, change: Partial<Pick<CreativeProject, "title" | "notes" | "status" | "category">>) => void;
   onDelete: (projectId: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [title, setTitle] = useState(project.title);
   const [notes, setNotes] = useState(project.notes);
+  const [category, setCategory] = useState(project.category ?? "");
 
   function saveProject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!title.trim()) return;
-    onUpdate(project.id, { title: title.trim(), notes: notes.trim() });
+    onUpdate(project.id, { title: title.trim(), notes: notes.trim(), category: category.trim() || undefined });
     setEditing(false);
   }
 
@@ -63,19 +70,21 @@ function ProjectCard({
             <span>Notes</span>
             <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} maxLength={1000} />
           </label>
+          <CategoryInput id={`project-${project.id}-category`} value={category} categories={categories} onChange={setCategory} />
           <div className="card-action-row">
             <button className="button button-primary button-small" type="submit" disabled={!title.trim()}>Save project</button>
-            <button className="button button-quiet button-small" type="button" onClick={() => { setTitle(project.title); setNotes(project.notes); setEditing(false); }}>Cancel</button>
+            <button className="button button-quiet button-small" type="button" onClick={() => { setTitle(project.title); setNotes(project.notes); setCategory(project.category ?? ""); setEditing(false); }}>Cancel</button>
           </div>
         </form>
       ) : (
         <>
           <h3>{project.title}</h3>
+          <CategoryBadge category={project.category} />
           <p className={`project-notes${project.notes ? "" : " is-empty"}`}>
             {project.notes || "Add a note about what you are making."}
           </p>
           <div className="card-action-row">
-            <button className="text-button" type="button" onClick={() => { setTitle(project.title); setNotes(project.notes); setEditing(true); }}>Edit details</button>
+            <button className="text-button" type="button" onClick={() => { setTitle(project.title); setNotes(project.notes); setCategory(project.category ?? ""); setEditing(true); }}>Edit details</button>
             {confirmingDelete ? (
               <span className="inline-confirm">
                 <span>Delete?</span>
@@ -164,6 +173,10 @@ export default function CreativeWorkspace() {
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [projectTitle, setProjectTitle] = useState("");
   const [projectNotes, setProjectNotes] = useState("");
+  const [projectCategory, setProjectCategory] = useState("");
+  const [selectedProjectCategory, setSelectedProjectCategory] = useState("");
+  const categories = data.categories ?? [];
+  const visibleProjects = filterByCategory(data.projects, selectedProjectCategory);
 
   function addIdea(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -197,19 +210,33 @@ export default function CreativeWorkspace() {
       createdAt: now,
       updatedAt: now,
     };
-    updateWorkspace((current) => ({ ...current, projects: [project, ...current.projects] }));
+    updateWorkspace((current) => {
+      const category = normalizeCategoryName(projectCategory, current.categories ?? []);
+      return {
+        ...current,
+        categories: addCustomCategory(current.categories ?? [], category),
+        projects: [category ? { ...project, category } : project, ...current.projects],
+      };
+    });
     setProjectTitle("");
     setProjectNotes("");
+    setProjectCategory("");
     setShowProjectForm(false);
   }
 
-  function updateProject(projectId: string, change: Partial<Pick<CreativeProject, "title" | "notes" | "status">>) {
-    updateWorkspace((current) => ({
-      ...current,
-      projects: current.projects.map((project) => project.id === projectId
-        ? { ...project, ...change, updatedAt: new Date().toISOString() }
-        : project),
-    }));
+  function updateProject(projectId: string, change: Partial<Pick<CreativeProject, "title" | "notes" | "status" | "category">>) {
+    const now = new Date().toISOString();
+    updateWorkspace((current) => {
+      const hasCategory = Object.prototype.hasOwnProperty.call(change, "category");
+      const category = hasCategory ? normalizeCategoryName(change.category ?? "", current.categories ?? []) : undefined;
+      return {
+        ...current,
+        categories: hasCategory ? addCustomCategory(current.categories ?? [], category) : current.categories,
+        projects: current.projects.map((project) => project.id === projectId
+          ? { ...project, ...change, ...(hasCategory ? { category } : {}), updatedAt: now }
+          : project),
+      };
+    });
   }
 
   function updateIdea(ideaId: string, change: Partial<Pick<CreativeIdea, "title" | "notes">>) {
@@ -269,9 +296,13 @@ export default function CreativeWorkspace() {
               <p className="panel-kicker">THINGS IN MOTION</p>
               <h2 id="projects-heading">Projects</h2>
             </div>
-            <button className="button button-primary" type="button" disabled={!isLoaded} onClick={() => setShowProjectForm((current) => !current)}>
-              <span aria-hidden="true">+</span> New project
-            </button>
+            <div className="project-heading-tools">
+              <CategoryFilter id="project-category-filter" value={selectedProjectCategory} categories={categories} onChange={setSelectedProjectCategory} />
+              <span className="task-total-pill">{visibleProjects.length} {visibleProjects.length === 1 ? "project" : "projects"}</span>
+              <button className="button button-primary" type="button" disabled={!isLoaded} onClick={() => setShowProjectForm((current) => !current)}>
+                <span aria-hidden="true">+</span> New project
+              </button>
+            </div>
           </header>
 
           {showProjectForm && (
@@ -279,17 +310,24 @@ export default function CreativeWorkspace() {
               <div className="form-title-row"><h3>Start a project</h3><button className="icon-action" type="button" aria-label="Close project form" onClick={() => setShowProjectForm(false)}>×</button></div>
               <label><span>Project name</span><input autoFocus value={projectTitle} onChange={(event) => setProjectTitle(event.target.value)} maxLength={120} placeholder="What are you making?" required /></label>
               <label><span>A note to yourself</span><textarea value={projectNotes} onChange={(event) => setProjectNotes(event.target.value)} rows={3} maxLength={1000} placeholder="A little context or a first step" /></label>
+              <CategoryInput id="new-project-category" value={projectCategory} categories={categories} onChange={setProjectCategory} />
               <button className="button button-primary" type="submit" disabled={!isLoaded || !projectTitle.trim()}>Create project</button>
             </form>
           )}
 
           {!isLoaded ? (
             <div className="creative-loading"><div className="skeleton skeleton-line" /><div className="skeleton skeleton-line short" /></div>
-          ) : data.projects.length ? (
+          ) : visibleProjects.length ? (
             <div className="project-grid">
-              {data.projects.map((project) => (
-                <ProjectCard key={project.id} project={project} onUpdate={updateProject} onDelete={(projectId) => updateWorkspace((current) => ({ ...current, projects: current.projects.filter((item) => item.id !== projectId) }))} />
+              {visibleProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} categories={categories} onUpdate={updateProject} onDelete={(projectId) => updateWorkspace((current) => ({ ...current, projects: current.projects.filter((item) => item.id !== projectId) }))} />
               ))}
+            </div>
+          ) : data.projects.length ? (
+            <div className="creative-empty empty-state filtered-empty-state">
+              <span className="empty-mark" aria-hidden="true">⌕</span>
+              <p>No projects in {selectedProjectCategory}.</p>
+              <button className="text-button" type="button" onClick={() => setSelectedProjectCategory("")}>Show all categories</button>
             </div>
           ) : (
             <div className="creative-empty empty-state">

@@ -1,4 +1,8 @@
 export const WORKSPACE_TIME_ZONE = "Africa/Lagos";
+export const BUILT_IN_CATEGORIES = ["Personal", "Work", "Creative", "Home"] as const;
+export const MAX_CATEGORY_LENGTH = 40;
+
+type CategorizedItem = { category?: string };
 
 export type TaskPeriod = "day" | "week";
 export type TaskStatus = "todo" | "doing" | "done";
@@ -14,6 +18,7 @@ export type Task = {
   carriedFrom?: string;
   dismissedOn?: string;
   completedAt?: string;
+  category?: string;
 };
 
 export type ProjectStatus = "planned" | "active" | "paused" | "complete";
@@ -25,6 +30,7 @@ export type CreativeProject = {
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
+  category?: string;
 };
 
 export type CreativeIdea = {
@@ -41,6 +47,7 @@ export type WorkspaceData = {
   projects: CreativeProject[];
   ideas: CreativeIdea[];
   rolloverHandled: Record<string, "carried" | "kept">;
+  categories?: string[];
 };
 
 const STORAGE_KEY = "daybook-workspace-v1";
@@ -53,7 +60,44 @@ export function emptyWorkspace(): WorkspaceData {
     projects: [],
     ideas: [],
     rolloverHandled: {},
+    categories: [],
   };
+}
+
+export function getCategoryOptions(categories: string[] = []) {
+  const seen = new Set(BUILT_IN_CATEGORIES.map((category) => category.toLocaleLowerCase()));
+  return [
+    ...BUILT_IN_CATEGORIES,
+    ...categories.filter((category) => {
+      const key = category.toLocaleLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }),
+  ];
+}
+
+export function normalizeCategoryName(value: string, categories: string[] = []) {
+  const name = value.trim().replace(/\s+/g, " ").slice(0, MAX_CATEGORY_LENGTH).trimEnd();
+  if (!name) return undefined;
+  const existing = getCategoryOptions(categories).find((category) => category.toLocaleLowerCase() === name.toLocaleLowerCase());
+  return existing ?? name;
+}
+
+export function addCustomCategory(categories: string[] = [], category?: string) {
+  if (!category || getCategoryOptions(categories).some((existing) => existing.toLocaleLowerCase() === category.toLocaleLowerCase())) {
+    return categories;
+  }
+  return [...categories, category];
+}
+
+export function filterByCategory<T extends CategorizedItem>(items: T[], category: string) {
+  if (!category) return items;
+  return items.filter((item) => !item.category || item.category === category);
+}
+
+function isValidCategory(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && value.length <= MAX_CATEGORY_LENGTH && value === value.trim();
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -72,7 +116,8 @@ function isTask(value: unknown): value is Task {
     typeof value.updatedAt === "string" &&
     (value.carriedFrom === undefined || typeof value.carriedFrom === "string") &&
     (value.dismissedOn === undefined || (typeof value.dismissedOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.dismissedOn))) &&
-    (value.completedAt === undefined || (typeof value.completedAt === "string" && Number.isFinite(Date.parse(value.completedAt))))
+    (value.completedAt === undefined || (typeof value.completedAt === "string" && Number.isFinite(Date.parse(value.completedAt)))) &&
+    (value.category === undefined || isValidCategory(value.category))
   );
 }
 
@@ -84,7 +129,8 @@ function isProject(value: unknown): value is CreativeProject {
     typeof value.notes === "string" &&
     (value.status === "planned" || value.status === "active" || value.status === "paused" || value.status === "complete") &&
     typeof value.createdAt === "string" &&
-    typeof value.updatedAt === "string"
+    typeof value.updatedAt === "string" &&
+    (value.category === undefined || isValidCategory(value.category))
   );
 }
 
@@ -107,12 +153,18 @@ export function isWorkspaceData(value: unknown): value is WorkspaceData {
     Array.isArray(value.projects) && value.projects.every(isProject) &&
     Array.isArray(value.ideas) && value.ideas.every(isIdea) &&
     isRecord(value.rolloverHandled) &&
-    Object.values(value.rolloverHandled).every((entry) => entry === "carried" || entry === "kept")
+    Object.values(value.rolloverHandled).every((entry) => entry === "carried" || entry === "kept") &&
+    (value.categories === undefined || (
+      Array.isArray(value.categories) &&
+      value.categories.every(isValidCategory) &&
+      new Set(value.categories.map((category) => category.toLocaleLowerCase())).size === value.categories.length &&
+      value.categories.every((category) => !BUILT_IN_CATEGORIES.some((builtIn) => builtIn.toLocaleLowerCase() === category.toLocaleLowerCase()))
+    ))
   );
 }
 
 export function hasWorkspaceEntries(data: WorkspaceData) {
-  return data.tasks.length > 0 || data.projects.length > 0 || data.ideas.length > 0 || Object.keys(data.rolloverHandled).length > 0;
+  return data.tasks.length > 0 || data.projects.length > 0 || data.ideas.length > 0 || Boolean(data.categories?.length) || Object.keys(data.rolloverHandled).length > 0;
 }
 
 export type LegacyWorkspace = {
