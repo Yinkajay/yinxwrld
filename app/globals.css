@@ -17,12 +17,12 @@
   --warm: #d89061;
   --warm-soft: #f5e9de;
   --danger: #a85445;
-  --status-todo-ink: #245aa0;
-  --status-todo-fill: #eaf2ff;
-  --status-doing-ink: #85510b;
-  --status-doing-fill: #fff2d6;
-  --status-done-ink: #256441;
-  --status-done-fill: #e8f4ec;
+  --status-todo-ink: #50647c;
+  --status-todo-fill: #edf1f5;
+  --status-doing-ink: #766345;
+  --status-doing-fill: #f3efe6;
+  --status-done-ink: #58705e;
+  --status-done-fill: #edf2ed;
   --radius-card: 16px;
   --radius-small: 8px;
   --shadow-soft: 0 8px 28px rgb(45 49 38 / 5%);
@@ -733,9 +733,9 @@ button:disabled {
   flex: 0 0 20px;
   place-items: center;
   padding: 0;
-  border: 1.5px solid var(--stage-ink);
+  border: 1.5px solid #c5c8b9;
   border-radius: 50%;
-  background: var(--stage-fill);
+  background: transparent;
   color: white;
   cursor: pointer;
   font-size: 12px;
@@ -744,13 +744,13 @@ button:disabled {
 }
 
 .task-check:hover {
-  border-color: var(--stage-ink);
+  border-color: var(--accent);
   transform: scale(1.06);
 }
 
 .task-check[aria-pressed="true"] {
-  border-color: var(--stage-ink);
-  background: var(--stage-ink);
+  border-color: var(--accent);
+  background: var(--accent);
 }
 
 .task-item-body {
