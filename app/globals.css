@@ -1018,30 +1018,80 @@ button:disabled {
   display: grid;
   width: 100%;
   align-items: center;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 4px 6px;
+  grid-template-columns: minmax(0, 1fr) minmax(128px, 176px);
+  gap: 8px 12px;
 }
 
 .inline-edit-form .task-edit-category {
-  grid-column: 1 / -1;
+  grid-column: 1;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
 }
 
 .inline-edit-form .task-edit-category input {
   width: 100%;
-  padding: 4px 6px;
+  min-height: 34px;
+  padding: 5px 8px;
 }
 
-.inline-edit-form input {
+.inline-edit-form > input {
+  grid-column: 1 / -1;
   width: 100%;
   min-width: 0;
-  padding: 6px 8px;
+  min-height: 36px;
+  padding: 6px 10px;
   border: 1px solid var(--line-strong);
   border-radius: 6px;
   background: white;
   color: var(--foreground);
   font-size: 14px;
+}
+
+.task-edit-status {
+  display: grid;
+  min-width: 0;
+  grid-column: 2;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.task-item .task-edit-status .status-select {
+  width: 100%;
+  max-width: none;
+  min-height: 34px;
+  padding: 5px 24px 5px 8px;
+  border: 1px solid var(--stage-fill);
+  border-radius: 7px;
+}
+
+.task-edit-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.task-item.is-editing .task-check {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+
+.kanban-card .inline-edit-form {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.kanban-card .inline-edit-form > input,
+.kanban-card .inline-edit-form .task-edit-category,
+.kanban-card .inline-edit-form .task-edit-status,
+.kanban-card .inline-edit-form .task-edit-actions {
+  grid-column: 1;
 }
 
 .empty-state {
@@ -1946,6 +1996,11 @@ button:disabled {
     flex-wrap: wrap;
   }
 
+  .inline-edit-form {
+    grid-template-columns: minmax(0, 1fr) minmax(128px, 176px);
+    gap: 8px;
+  }
+
   .task-item-body {
     flex: 1 1 calc(100% - 32px);
   }
@@ -2035,6 +2090,22 @@ button:disabled {
 
   .task-panel-heading {
     flex-direction: column;
+  }
+
+  .inline-edit-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inline-edit-form > input,
+  .inline-edit-form .task-edit-category,
+  .inline-edit-form .task-edit-status,
+  .inline-edit-form .task-edit-actions {
+    grid-column: 1;
+  }
+
+  .inline-edit-form .task-edit-category,
+  .inline-edit-form .task-edit-status {
+    grid-template-columns: 68px minmax(0, 1fr);
   }
 
   .view-toggle {

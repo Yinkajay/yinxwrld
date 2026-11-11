@@ -63,7 +63,7 @@ function TaskItem({
   }
 
   return (
-    <div className={`task-item status-${task.status}${task.status === "done" ? " is-done" : ""}`}>
+    <div className={`task-item status-${task.status}${task.status === "done" ? " is-done" : ""}${isEditing ? " is-editing" : ""}`}>
       <button
         className="task-check"
         type="button"
@@ -92,8 +92,21 @@ function TaskItem({
               onChange={setDraftCategory}
               className="task-edit-category"
             />
-            <button className="text-button" type="submit" disabled={!draft.trim()}>Save</button>
-            <button className="text-button muted-button" type="button" onClick={() => { setDraft(task.title); setDraftCategory(task.category ?? ""); setIsEditing(false); }}>Cancel</button>
+            <label className="task-edit-status" htmlFor={`${editId}-status`}>
+              <span>Status</span>
+              <select
+                id={`${editId}-status`}
+                className="status-select"
+                value={task.status}
+                onChange={(event) => onUpdate(task.id, { status: event.target.value as TaskStatus })}
+              >
+                {statuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
+              </select>
+            </label>
+            <div className="task-edit-actions">
+              <button className="text-button" type="submit" disabled={!draft.trim()}>Save</button>
+              <button className="text-button muted-button" type="button" onClick={() => { setDraft(task.title); setDraftCategory(task.category ?? ""); setIsEditing(false); }}>Cancel</button>
+            </div>
           </form>
         ) : (
           <>
@@ -104,26 +117,30 @@ function TaskItem({
         )}
       </div>
 
-      <label className="sr-only" htmlFor={`${editId}-status`}>Status for {task.title}</label>
-      <select
-        id={`${editId}-status`}
-        className="status-select"
-        value={task.status}
-        onChange={(event) => onUpdate(task.id, { status: event.target.value as TaskStatus })}
-      >
-        {statuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
-      </select>
+      {!isEditing && (
+        <>
+          <label className="sr-only" htmlFor={`${editId}-status`}>Status for {task.title}</label>
+          <select
+            id={`${editId}-status`}
+            className="status-select"
+            value={task.status}
+            onChange={(event) => onUpdate(task.id, { status: event.target.value as TaskStatus })}
+          >
+            {statuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
+          </select>
 
-      <div className="task-actions">
-        {isConfirmingDelete ? (
-          <>
-            <button autoFocus className="icon-action delete-confirm" type="button" aria-label={`${deleteLabel}: ${task.title}`} onClick={() => onDelete(task.id)}>{deleteLabel}?</button>
-            <button className="icon-action" type="button" onClick={() => setIsConfirmingDelete(false)}>Cancel</button>
-          </>
-        ) : (
-          <TaskMenu title={task.title} actions={menuActions} />
-        )}
-      </div>
+          <div className="task-actions">
+            {isConfirmingDelete ? (
+              <>
+                <button autoFocus className="icon-action delete-confirm" type="button" aria-label={`${deleteLabel}: ${task.title}`} onClick={() => onDelete(task.id)}>{deleteLabel}?</button>
+                <button className="icon-action" type="button" onClick={() => setIsConfirmingDelete(false)}>Cancel</button>
+              </>
+            ) : (
+              <TaskMenu title={task.title} actions={menuActions} />
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
