@@ -41,14 +41,8 @@ export type WorkspaceData = {
   rolloverHandled: Record<string, "carried" | "kept">;
 };
 
-export type WorkspaceLoadResult = {
-  data: WorkspaceData;
-  status: "ready" | "unavailable" | "corrupt";
-};
-
 const STORAGE_KEY = "daybook-workspace-v1";
 const PENDING_SYNC_KEY = `${STORAGE_KEY}:pending-sync`;
-const CHANGE_EVENT = "daybook-workspace-change";
 
 export function emptyWorkspace(): WorkspaceData {
   return {
@@ -117,79 +111,36 @@ export function hasWorkspaceEntries(data: WorkspaceData) {
   return data.tasks.length > 0 || data.projects.length > 0 || data.ideas.length > 0 || Object.keys(data.rolloverHandled).length > 0;
 }
 
-export function loadWorkspace(): WorkspaceLoadResult {
-  if (typeof window === "undefined") {
-    return { data: emptyWorkspace(), status: "unavailable" };
-  }
+export type LegacyWorkspace = {
+  data: WorkspaceData | null;
+  corrupt: boolean;
+};
 
-  let stored: string | null;
-  try {
-    stored = window.localStorage.getItem(STORAGE_KEY);
-  } catch {
-    return { data: emptyWorkspace(), status: "unavailable" };
-  }
-
-  if (!stored) return { data: emptyWorkspace(), status: "ready" };
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stored);
-  } catch {
-    return { data: emptyWorkspace(), status: "corrupt" };
-  }
-
-  if (!isWorkspaceData(parsed)) {
-    return { data: emptyWorkspace(), status: "corrupt" };
-  }
-
-  return { data: parsed, status: "ready" };
-}
-
-export function saveWorkspace(data: WorkspaceData): boolean {
-  if (typeof window === "undefined") return false;
+/** Read the old browser copy once so it can be moved into MongoDB. */
+export function readLegacyWorkspace(): LegacyWorkspace {
+  if (typeof window === "undefined") return { data: null, corrupt: false };
 
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    window.dispatchEvent(new Event(CHANGE_EVENT));
-    return true;
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (!stored) return { data: null, corrupt: false };
+
+    const parsed: unknown = JSON.parse(stored);
+    if (!isWorkspaceData(parsed)) return { data: null, corrupt: true };
+    return { data: parsed, corrupt: false };
   } catch {
-    return false;
+    return { data: null, corrupt: true };
   }
 }
 
-export function hasPendingWorkspaceSync() {
-  if (typeof window === "undefined") return false;
+/** Remove the old browser copy after MongoDB has loaded or accepted it. */
+export function clearLegacyWorkspace() {
+  if (typeof window === "undefined") return;
   try {
-    return window.localStorage.getItem(PENDING_SYNC_KEY) === "true";
+    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(PENDING_SYNC_KEY);
   } catch {
-    return false;
+    // The app no longer reads or writes browser storage after migration.
   }
-}
-
-export function setPendingWorkspaceSync(pending: boolean) {
-  if (typeof window === "undefined") return false;
-  try {
-    if (pending) window.localStorage.setItem(PENDING_SYNC_KEY, "true");
-    else window.localStorage.removeItem(PENDING_SYNC_KEY);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function subscribeToWorkspaceChanges(listener: () => void) {
-  if (typeof window === "undefined") return () => undefined;
-
-  const handleStorage = (event: StorageEvent) => {
-    if (event.key === STORAGE_KEY || event.key === null) listener();
-  };
-  window.addEventListener("storage", handleStorage);
-  window.addEventListener(CHANGE_EVENT, listener);
-
-  return () => {
-    window.removeEventListener("storage", handleStorage);
-    window.removeEventListener(CHANGE_EVENT, listener);
-  };
 }
 
 export function createId() {

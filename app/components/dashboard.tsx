@@ -14,6 +14,7 @@ import {
   type WorkspaceData,
 } from "@/app/lib/workspace";
 import { TaskBoard, TaskCollection } from "@/app/components/task-collection";
+import StorageNotice from "@/app/components/storage-notice";
 
 type RolloverReview = {
   key: string;
@@ -89,15 +90,6 @@ function CarryoverPrompt({
   );
 }
 
-function StorageNotice({ message }: { message: string }) {
-  return (
-    <div className="storage-notice" role="status">
-      <span aria-hidden="true">!</span>
-      <p>{message}</p>
-    </div>
-  );
-}
-
 function LoadingPanels({ showWeek }: { showWeek: boolean }) {
   return (
     <div className={`planner-grid${showWeek ? " is-two-periods" : " is-one-period"}`} aria-label="Loading your planner" aria-busy="true">
@@ -145,7 +137,7 @@ function HistoryTaskRow({ task, onDelete }: { task: Task; onDelete: (taskId: str
 }
 
 export default function Dashboard() {
-  const { data, isLoaded, storageMessage, updateWorkspace } = useWorkspace();
+  const { data, isLoaded, isConnected, storageMessage, retryConnection, updateWorkspace } = useWorkspace();
   const [todayKey, setTodayKey] = useState<string | null>(null);
   const [combined, setCombined] = useState(false);
   const [showWeek, setShowWeek] = useState(false);
@@ -249,9 +241,9 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {storageMessage && <StorageNotice message={storageMessage} />}
+      {storageMessage && <StorageNotice message={storageMessage} onRetry={isConnected ? undefined : retryConnection} />}
 
-      {rolloverReviews.map((review) => (
+      {isConnected && rolloverReviews.map((review) => (
         <CarryoverPrompt
           key={review.key}
           review={review}
@@ -292,6 +284,12 @@ export default function Dashboard() {
 
         {!isLoaded || !todayKey || !weekKey ? (
           <LoadingPanels showWeek={showWeek} />
+        ) : !isConnected ? (
+          <div className="empty-state mongo-unavailable">
+            <span className="empty-mark" aria-hidden="true">!</span>
+            <p>Reconnect to MongoDB to open your lists.</p>
+            <span>Your workspace is not stored on this device.</span>
+          </div>
         ) : combined ? (
           <section className="combined-board-panel" aria-label="Combined current tasks">
             <div className="combined-board-heading">
@@ -348,7 +346,7 @@ export default function Dashboard() {
         )}
       </section>
 
-      {historyOpen && isLoaded && (
+      {historyOpen && isLoaded && isConnected && (
         <section className="history-panel" id="history-panel" aria-labelledby="history-heading">
           <header className="history-panel-header">
             <div>

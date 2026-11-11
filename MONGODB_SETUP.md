@@ -26,12 +26,10 @@ Connect the repository in the Netlify dashboard and use the detected Next.js bui
 
 Netlify's standard Functions use changing outbound IP addresses, so this setup uses the `0.0.0.0/0` Atlas entry you approved. Atlas still requires the database user's credentials, and that user should only have read/write access to the `yinxwrld` database.
 
-## Existing browser data and sync behavior
+## Workspace storage and sync behavior
 
-The first browser that connects imports its saved workspace if MongoDB does not have one yet. After that, MongoDB is the shared copy and each browser keeps an offline cache. Changes made while MongoDB is unavailable are marked locally and uploaded when the connection returns. A successful delete is saved as part of the full workspace snapshot, so removed items stay removed.
+MongoDB is the only ongoing persistent store. The browser does not keep an offline workspace copy. If MongoDB is unavailable, the app shows a connection message and does not save edits on that device. Retry after the database connection is restored.
+
+When the updated app first opens, it imports the old browser-saved workspace into MongoDB, merging records if MongoDB already has a workspace. Once the import succeeds, it removes the old browser copy. This migration only sees data saved for the same site origin and browser; `localhost` and the Netlify site have separate browser storage.
 
 If two devices edit at once, the most recently saved full workspace snapshot wins. This is intended for one person using the workspace across devices; it does not merge simultaneous edits item by item.
-
-## Move existing browser data into MongoDB
-
-If you already have tasks saved in this browser on your local app, configure `.env.local` first and open the local app before using the Netlify site. When Atlas is empty, the local app uploads its saved browser workspace to MongoDB. Browser storage is separate for `localhost` and the Netlify domain, so the online site cannot see the local browser copy directly.

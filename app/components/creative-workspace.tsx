@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useWorkspace } from "@/app/hooks/use-workspace";
+import StorageNotice from "@/app/components/storage-notice";
 import {
   createId,
   type CreativeIdea,
@@ -157,7 +158,7 @@ function IdeaCard({
 }
 
 export default function CreativeWorkspace() {
-  const { data, isLoaded, storageMessage, updateWorkspace } = useWorkspace();
+  const { data, isLoaded, isConnected, storageMessage, retryConnection, updateWorkspace } = useWorkspace();
   const [ideaTitle, setIdeaTitle] = useState("");
   const [ideaNotes, setIdeaNotes] = useState("");
   const [showProjectForm, setShowProjectForm] = useState(false);
@@ -251,9 +252,17 @@ export default function CreativeWorkspace() {
         </div>
       </header>
 
-      {storageMessage && <div className="storage-notice" role="status"><span aria-hidden="true">!</span><p>{storageMessage}</p></div>}
+      {storageMessage && <StorageNotice message={storageMessage} onRetry={isConnected ? undefined : retryConnection} />}
 
-      <div className="creative-grid">
+      {!isLoaded ? (
+        <div className="creative-loading"><div className="skeleton skeleton-line" /><div className="skeleton skeleton-line short" /></div>
+      ) : !isConnected ? (
+        <div className="creative-empty empty-state mongo-unavailable">
+          <span className="empty-mark" aria-hidden="true">!</span>
+          <p>Reconnect to MongoDB to open your creative workspace.</p>
+          <span>Your projects and ideas are not stored on this device.</span>
+        </div>
+      ) : <div className="creative-grid">
         <section className="creative-section projects-section" aria-labelledby="projects-heading">
           <header className="section-heading creative-section-heading">
             <div>
@@ -326,7 +335,7 @@ export default function CreativeWorkspace() {
             </div>
           )}
         </section>
-      </div>
+      </div>}
     </div>
   );
 }

@@ -291,6 +291,12 @@ button:disabled {
   line-height: 20px;
 }
 
+.storage-notice-copy {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+}
+
 .carryover-card {
   display: flex;
   gap: 16px;
