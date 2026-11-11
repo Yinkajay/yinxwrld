@@ -14,12 +14,15 @@ import {
   normalizeCategoryName,
   type Task,
   type TaskPeriod,
+  type TaskRepeat,
   type WorkspaceData,
 } from "@/app/lib/workspace";
 import { TaskBoard, TaskCollection } from "@/app/components/task-collection";
 import { CategoryFilter } from "@/app/components/category-controls";
 import StorageNotice from "@/app/components/storage-notice";
-import { changeTask, copyTaskToPeriod, moveDailyTaskToWeek, selectPlannerTasks, setWeeklyDismissal, type TaskChange } from "@/app/lib/planner";
+import { copyTaskToPeriod, selectPlannerTasks, setWeeklyDismissal } from "@/app/lib/planner";
+import { deleteTaskOccurrence, editRepeatingTask, moveTaskOccurrenceToWeek, setTaskRepeat, stopRecurringTask, type TaskEditChange } from "@/app/lib/recurrence";
+import { RecurringTasksPanel } from "@/app/components/repeat-controls";
 
 type RolloverReview = {
   key: string;
@@ -39,7 +42,7 @@ function findRolloverReviews(data: WorkspaceData, todayKey: string, weekKey: str
     const key = `${transition.period}:${transition.sourceKey}->${transition.targetKey}`;
     if (data.rolloverHandled[key]) return [];
     const tasks = data.tasks.filter(
-      (task) => task.period === transition.period && task.periodKey === transition.sourceKey && task.status !== "done",
+      (task) => task.period === transition.period && task.periodKey === transition.sourceKey && task.status !== "done" && !task.recurringTaskId,
     );
     return tasks.length ? [{ ...transition, key, tasks }] : [];
   });
@@ -206,8 +209,9 @@ export default function Dashboard() {
     : [];
   const rolloverReviews = todayKey && weekKey ? findRolloverReviews(data, todayKey, weekKey) : [];
 
-  function addTask(title: string, period: TaskPeriod, periodKey: string, categoryInput: string) {
+  function addTask(title: string, period: TaskPeriod, periodKey: string, categoryInput: string, repeat: TaskRepeat) {
     const now = new Date().toISOString();
+    const seriesId = createId();
     const task: Task = {
       id: createId(),
       title,
@@ -219,30 +223,37 @@ export default function Dashboard() {
     };
     updateWorkspace((current) => {
       const category = normalizeCategoryName(categoryInput, current.categories ?? []);
-      return {
+      const next = {
         ...current,
         categories: addCustomCategory(current.categories ?? [], category),
         tasks: [...current.tasks, category ? { ...task, category } : task],
       };
+      return setTaskRepeat(next, task.id, repeat, seriesId, now);
     });
   }
 
-  function updateTask(taskId: string, change: TaskChange) {
+  function updateTask(taskId: string, change: TaskEditChange) {
     const now = new Date().toISOString();
+    const seriesId = createId();
     updateWorkspace((current) => {
       const hasCategory = Object.prototype.hasOwnProperty.call(change, "category");
       const category = hasCategory ? normalizeCategoryName(change.category ?? "", current.categories ?? []) : undefined;
-      return {
+      const next = {
         ...current,
         categories: hasCategory ? addCustomCategory(current.categories ?? [], category) : current.categories,
-        tasks: changeTask(current.tasks, taskId, hasCategory ? { ...change, category } : change, now),
       };
+      return editRepeatingTask(next, taskId, hasCategory ? { ...change, category } : change, seriesId, now);
     });
   }
 
   function moveToWeek(taskId: string) {
     const now = new Date().toISOString();
-    updateWorkspace((current) => ({ ...current, tasks: moveDailyTaskToWeek(current.tasks, taskId, now) }));
+    updateWorkspace((current) => moveTaskOccurrenceToWeek(current, taskId, now));
+  }
+
+  function stopRepeating(seriesId: string) {
+    const now = new Date().toISOString();
+    updateWorkspace((current) => stopRecurringTask(current, seriesId, now));
   }
 
   function setDismissed(taskId: string, dismissed: boolean) {
@@ -254,10 +265,13 @@ export default function Dashboard() {
     todayKey: todayKey ?? "",
     onMoveToWeek: moveToWeek,
     onShowInToday: (taskId: string) => setDismissed(taskId, false),
+    recurringTasks: data.recurringTasks ?? [],
+    onStopRepeating: stopRepeating,
   };
 
   function deleteTask(taskId: string) {
-    updateWorkspace((current) => ({ ...current, tasks: current.tasks.filter((task) => task.id !== taskId) }));
+    const now = new Date().toISOString();
+    updateWorkspace((current) => deleteTaskOccurrence(current, taskId, now));
   }
 
   function markRolloverHandled(review: RolloverReview, outcome: "carried" | "kept", selectedIds: string[] = []) {
@@ -409,6 +423,8 @@ export default function Dashboard() {
           </div>
         )}
       </section>
+
+      {isLoaded && isConnected && <RecurringTasksPanel tasks={data.recurringTasks ?? []} onStop={stopRepeating} />}
 
       {historyOpen && isLoaded && isConnected && (
         <section className="history-panel" id="history-panel" aria-labelledby="history-heading">

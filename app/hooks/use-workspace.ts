@@ -11,6 +11,7 @@ import {
   type WorkspaceData,
 } from "@/app/lib/workspace";
 import { persistWorkspaceMutation, readRemoteWorkspace, type WorkspaceMutation } from "@/app/lib/workspace-client";
+import { materializeRecurringTasks } from "@/app/lib/recurrence";
 
 function enqueueRemoteTask<T>(queue: { current: Promise<void> }, task: () => Promise<T>) {
   const result = queue.current.catch(() => undefined).then(task);
@@ -40,6 +41,7 @@ function mergeWorkspaces(remote: WorkspaceData, legacy: WorkspaceData): Workspac
     ideas: mergeById(remote.ideas, legacy.ideas),
     rolloverHandled: { ...remote.rolloverHandled, ...legacy.rolloverHandled },
     categories: mergeCategoryLists(remote.categories, legacy.categories),
+    recurringTasks: mergeById(remote.recurringTasks ?? [], legacy.recurringTasks ?? []),
   };
 }
 
@@ -82,6 +84,11 @@ export function useWorkspace() {
       if (!isSameWorkspace(mergeWorkspaces(remote.data, legacyData), remote.data)) {
         remote = await persistWorkspaceMutation((current) => mergeWorkspaces(current, legacyData));
       }
+    }
+
+    const now = new Date().toISOString();
+    if (materializeRecurringTasks(remote.data, now) !== remote.data) {
+      remote = await persistWorkspaceMutation((current) => materializeRecurringTasks(current, now));
     }
 
     let legacyWarning: string | null = null;

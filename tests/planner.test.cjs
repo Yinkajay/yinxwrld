@@ -17,6 +17,8 @@ function load(file, imports = {}) {
 
 const workspace = load("app/lib/workspace.ts");
 const planner = load("app/lib/planner.ts", { "./workspace": workspace });
+const recurrence = load("app/lib/recurrence.ts", { "./workspace": workspace, "./planner": planner });
+const client = load("app/lib/workspace-client.ts", { "./workspace": workspace });
 const now = "2026-11-11T12:00:00.000Z";
 const today = "2026-11-11";
 const tomorrow = "2026-11-12";
@@ -24,6 +26,116 @@ const task = (id, overrides = {}) => ({
   id, title: id, period: "week", periodKey: "2026-11-09", status: "todo", createdAt: now, updatedAt: now, ...overrides,
 });
 const ids = (tasks) => tasks.map((item) => item.id);
+
+function recurringFixture(repeat = "daily", period = "day") {
+  const data = { ...workspace.emptyWorkspace(), tasks: [task("original", { period, periodKey: period === "day" ? today : "2026-11-09", category: "Work", status: "done", completedAt: now })] };
+  return recurrence.setTaskRepeat(data, "original", repeat, "series", now);
+}
+
+test("daily repeats preserve the original and create exactly one fresh task at Lagos midnight", () => {
+  const data = recurringFixture();
+  assert.equal(data.tasks[0].id, "original");
+  assert.equal(recurrence.materializeRecurringTasks(data, "2026-11-11T22:59:59Z"), data);
+  const next = recurrence.materializeRecurringTasks(data, "2026-11-11T23:00:00Z");
+  assert.equal(next.tasks.length, 2);
+  assert.equal(next.tasks[1].periodKey, tomorrow);
+  assert.equal(next.tasks[1].status, "todo");
+  assert.equal(next.tasks[1].completedAt, undefined);
+  assert.equal(next.tasks[1].category, "Work");
+  assert.equal(next.tasks[0].status, "done");
+  assert.equal(recurrence.materializeRecurringTasks(JSON.parse(JSON.stringify(next)), "2026-11-12T10:00:00Z").tasks.length, 2);
+});
+
+test("weekdays skip weekends, weekly daily tasks keep their weekday, and weekly lists reset on Monday", () => {
+  const weekdays = recurringFixture("weekdays");
+  assert.equal(recurrence.materializeRecurringTasks(weekdays, "2026-11-14T12:00:00Z"), weekdays);
+  assert.equal(recurrence.materializeRecurringTasks(weekdays, "2026-11-15T12:00:00Z"), weekdays);
+  assert.equal(recurrence.materializeRecurringTasks(weekdays, "2026-11-16T12:00:00Z").tasks.length, 2);
+  const weeklyDay = recurringFixture("weekly");
+  assert.equal(recurrence.materializeRecurringTasks(weeklyDay, "2026-11-12T12:00:00Z"), weeklyDay);
+  assert.equal(recurrence.materializeRecurringTasks(weeklyDay, "2026-11-18T12:00:00Z").tasks.length, 2);
+  const weeklyList = recurringFixture("weekly", "week");
+  assert.equal(recurrence.materializeRecurringTasks(weeklyList, "2026-11-15T22:59:59Z"), weeklyList);
+  const monday = recurrence.materializeRecurringTasks(weeklyList, "2026-11-15T23:00:00Z");
+  assert.equal(monday.tasks[1].periodKey, "2026-11-16");
+  assert.equal(monday.tasks[1].status, "todo");
+});
+
+test("missed dates are not backfilled and stopped repeats preserve history", () => {
+  const data = recurringFixture();
+  const later = recurrence.materializeRecurringTasks(data, "2027-01-01T12:00:00Z");
+  assert.equal(later.tasks.length, 2);
+  assert.equal(later.tasks[1].periodKey, "2027-01-01");
+  const stopped = recurrence.stopRecurringTask(later, "series", "2027-01-01T12:00:00Z");
+  assert.equal(stopped.tasks.length, 2);
+  assert.equal(recurrence.materializeRecurringTasks(stopped, "2027-01-02T12:00:00Z"), stopped);
+});
+
+test("deleting or moving one occurrence cannot regenerate it, while future repeats continue", () => {
+  const data = recurringFixture();
+  const deleted = recurrence.deleteTaskOccurrence(data, "original", now);
+  assert.equal(recurrence.materializeRecurringTasks(JSON.parse(JSON.stringify(deleted)), now).tasks.length, 0);
+  assert.equal(recurrence.materializeRecurringTasks(deleted, "2026-11-12T12:00:00Z").tasks.length, 1);
+  const moved = recurrence.moveTaskOccurrenceToWeek(data, "original", now);
+  assert.equal(moved.tasks[0].period, "week");
+  assert.equal(moved.tasks[0].recurringTaskId, undefined);
+  assert.equal(recurrence.materializeRecurringTasks(moved, now).tasks.length, 1);
+  assert.equal(recurrence.materializeRecurringTasks(moved, "2026-11-12T12:00:00Z").tasks.length, 2);
+});
+
+test("repeat edits update this occurrence and the future, without rewriting previous occurrences", () => {
+  const data = recurrence.materializeRecurringTasks(recurringFixture(), "2026-11-12T12:00:00Z");
+  const nextId = data.tasks[1].id;
+  const edited = recurrence.editRepeatingTask(data, nextId, { title: "Updated", category: "Personal", repeat: "weekdays" }, "unused", "2026-11-12T12:00:00Z");
+  assert.equal(edited.tasks[0].title, "original");
+  assert.equal(edited.tasks[0].category, "Work");
+  assert.equal(edited.tasks[1].title, "Updated");
+  assert.equal(edited.recurringTasks.length, 1);
+  const future = recurrence.materializeRecurringTasks(edited, "2026-11-13T12:00:00Z");
+  assert.equal(future.tasks[2].title, "Updated");
+  assert.equal(future.tasks[2].category, "Personal");
+  assert.equal(recurrence.editRepeatingTask(future, nextId, { repeat: "none" }, "unused", now).recurringTasks[0].active, false);
+});
+
+test("recurrence validation accepts legacy data and rejects malformed schedules", () => {
+  const data = recurringFixture();
+  assert.equal(workspace.isWorkspaceData(JSON.parse(JSON.stringify(data))), true);
+  const old = workspace.emptyWorkspace();
+  delete old.recurringTasks;
+  assert.equal(workspace.isWorkspaceData(old), true);
+  for (const extra of [{ repeat: "monthly" }, { active: "yes" }, { skippedKeys: [12] }, { startKey: "not-a-date" }, { period: "week", repeat: "daily" }]) {
+    assert.equal(workspace.isWorkspaceData({ ...data, recurringTasks: [{ ...data.recurringTasks[0], ...extra }] }), false);
+  }
+});
+
+test("two clients creating the same occurrence retry revisions and save one shared task", async () => {
+  const originalFetch = global.fetch;
+  let saved = JSON.parse(JSON.stringify(recurringFixture()));
+  let revision = "0";
+  let conflicts = 0;
+  global.fetch = async (_url, options = {}) => {
+    if (options.method !== "PUT") return Response.json({ exists: true, data: saved, revision });
+    const body = JSON.parse(options.body);
+    if (body.expectedRevision !== revision) {
+      conflicts += 1;
+      return Response.json({}, { status: 409 });
+    }
+    saved = body.data;
+    revision = String(Number(revision) + 1);
+    return Response.json({ data: saved, revision });
+  };
+  try {
+    const generate = (data) => recurrence.materializeRecurringTasks(data, "2026-11-12T12:00:00Z");
+    await Promise.all([client.persistWorkspaceMutation(generate), client.persistWorkspaceMutation(generate)]);
+    assert.ok(conflicts > 0);
+    assert.equal(saved.tasks.length, 2);
+    assert.equal(saved.recurringTasks.length, 1);
+    assert.equal(new Set(saved.tasks.map((task) => task.id)).size, 2);
+    assert.equal(workspace.isWorkspaceData(saved), true);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
 
 test("Today puts native tasks first and links weekly sources without copies", () => {
   const weekly = task("weekly");

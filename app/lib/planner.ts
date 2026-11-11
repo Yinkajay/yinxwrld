@@ -56,6 +56,7 @@ export function copyTaskToPeriod(task: Task, id: string, targetKey: string, now:
     id,
     periodKey: targetKey,
     carriedFrom: task.id,
+    recurringTaskId: undefined,
     dismissedOn: undefined,
     completedAt: undefined,
     createdAt: now,

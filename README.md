@@ -6,6 +6,16 @@ Today includes this week’s unfinished tasks with a “From this week’s list�
 
 Run `npm run test:planner` for the planner’s date, completion, conversion, and compatibility checks.
 
+## Recurring tasks
+
+Choose **Repeat** when adding or editing a task: **Every day**, **Weekdays**, or **Every week**. In Today, weekly repeats return on the same weekday; in This week, they return in each new weekly list. Dates follow Africa/Lagos.
+
+Each occurrence has its own status and history. New occurrences are created when the workspace loads or refreshes, including at a day boundary while the app is open. Missed dates are not backfilled. Schedules and occurrences are stored in the shared MongoDB workspace, using the existing revision retries to prevent duplicates across devices.
+
+Editing an occurrence updates its title, category, and schedule for future repeats without rewriting previous occurrences. **Delete this occurrence** removes only that occurrence. **Stop repeating**, available in More and the collapsed Repeating tasks section, keeps existing tasks and stops future ones. Moving a repeating daily occurrence to This week moves only that occurrence; its future daily schedule continues.
+
+See [TODO.md](./TODO.md) for the planned private journal and other future work.
+
 ## Local development
 
 Run the development server:

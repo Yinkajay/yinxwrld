@@ -1,8 +1,9 @@
 "use client";
 
 import { useId, useState, type DragEvent, type FormEvent } from "react";
-import type { Task, TaskPeriod, TaskStatus } from "@/app/lib/workspace";
-import type { TaskChange } from "@/app/lib/planner";
+import type { RecurringTask, Task, TaskPeriod, TaskRepeat, TaskStatus } from "@/app/lib/workspace";
+import { repeatLabel, type TaskEditChange } from "@/app/lib/recurrence";
+import { RepeatInput } from "./repeat-controls";
 import TaskMenu, { type TaskMenuAction } from "./task-menu";
 import { CategoryBadge, CategoryFilter, CategoryInput } from "./category-controls";
 import { filterByCategory } from "@/app/lib/workspace";
@@ -18,10 +19,12 @@ export type TaskContextActions = {
   onMoveToWeek: (taskId: string) => void;
   onDismissForToday?: (taskId: string) => void;
   onShowInToday?: (taskId: string) => void;
+  recurringTasks: RecurringTask[];
+  onStopRepeating: (seriesId: string) => void;
 };
 
 type TaskActions = {
-  onUpdate: (taskId: string, change: TaskChange) => void;
+  onUpdate: (taskId: string, change: TaskEditChange) => void;
   onDelete: (taskId: string) => void;
   context?: TaskContextActions;
 };
@@ -38,13 +41,15 @@ function TaskItem({
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [draft, setDraft] = useState(task.title);
   const [draftCategory, setDraftCategory] = useState(task.category ?? "");
+  const series = context?.recurringTasks.find((item) => item.id === task.recurringTaskId && item.active);
+  const [draftRepeat, setDraftRepeat] = useState<TaskRepeat>(series?.repeat ?? "none");
   const editId = useId();
-  const deleteLabel = task.period === "week" ? "Delete weekly task" : "Delete task";
+  const deleteLabel = task.recurringTaskId ? "Delete this occurrence" : task.period === "week" ? "Delete weekly task" : "Delete task";
   const menuActions: TaskMenuAction[] = [
-    { label: "Edit", onSelect: () => { setDraft(task.title); setDraftCategory(task.category ?? ""); setIsEditing(true); } },
+    { label: "Edit", onSelect: () => { setDraft(task.title); setDraftCategory(task.category ?? ""); setDraftRepeat(series?.repeat ?? "none"); setIsEditing(true); } },
   ];
   if (context && task.period === "day" && task.periodKey === context.todayKey) {
-    menuActions.push({ label: "Move to this week", onSelect: () => context.onMoveToWeek(task.id) });
+    menuActions.push({ label: task.recurringTaskId ? "Move this occurrence to this week" : "Move to this week", onSelect: () => context.onMoveToWeek(task.id) });
   }
   if (context && task.period === "week") {
     if (context.onDismissForToday) menuActions.push({ label: "Dismiss for today", onSelect: () => context.onDismissForToday?.(task.id) });
@@ -52,13 +57,14 @@ function TaskItem({
       menuActions.push({ label: "Show in Today", onSelect: () => context.onShowInToday?.(task.id) });
     }
   }
+  if (series && context) menuActions.push({ label: "Stop repeating", onSelect: () => context.onStopRepeating(series.id) });
   menuActions.push({ label: deleteLabel, danger: true, onSelect: () => setIsConfirmingDelete(true) });
 
   function saveEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const title = draft.trim();
     if (!title) return;
-    onUpdate(task.id, { title, category: draftCategory.trim() || undefined });
+    onUpdate(task.id, { title, category: draftCategory.trim() || undefined, repeat: draftRepeat });
     setIsEditing(false);
   }
 
@@ -93,9 +99,10 @@ function TaskItem({
               className="task-edit-category"
             />
             <label className="task-edit-status" htmlFor={`${editId}-status`}>
-              <span>Status</span>
+              <span id={`${editId}-status-label`}>Status</span>
               <select
                 id={`${editId}-status`}
+                aria-labelledby={`${editId}-status-label`}
                 className="status-select"
                 value={task.status}
                 onChange={(event) => onUpdate(task.id, { status: event.target.value as TaskStatus })}
@@ -103,6 +110,11 @@ function TaskItem({
                 {statuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
               </select>
             </label>
+            <div className="task-edit-repeat">
+              <RepeatInput id={`${editId}-repeat`} value={draftRepeat} period={task.period} onChange={setDraftRepeat} />
+              {draftRepeat !== "none" && <span className="repeat-hint">Edits apply to this task and future repeats.{draftRepeat === "weekly" && task.period === "day" ? " Repeats on this weekday." : ""}</span>}
+              {series && draftRepeat === "none" && <span className="repeat-hint">Stops future repeats. This task stays.</span>}
+            </div>
             <div className="task-edit-actions">
               <button className="text-button" type="submit" disabled={!draft.trim()}>Save</button>
               <button className="text-button muted-button" type="button" onClick={() => { setDraft(task.title); setDraftCategory(task.category ?? ""); setIsEditing(false); }}>Cancel</button>
@@ -112,6 +124,7 @@ function TaskItem({
           <>
             <span className="task-title">{task.title}</span>
             <CategoryBadge category={task.category} />
+            {series && <span className="task-repeat-label">{repeatLabel(series.repeat)}</span>}
             {sourceLabel && <span className="task-origin">{sourceLabel}</span>}
           </>
         )}
@@ -237,8 +250,8 @@ export function TaskCollection({
   tasks: Task[];
   view: "list" | "board";
   onViewChange: (view: "list" | "board") => void;
-  onAddTask: (title: string, period: TaskPeriod, periodKey: string, category: string) => void;
-  onUpdateTask: (taskId: string, change: TaskChange) => void;
+  onAddTask: (title: string, period: TaskPeriod, periodKey: string, category: string, repeat: TaskRepeat) => void;
+  onUpdateTask: (taskId: string, change: TaskEditChange) => void;
   onDeleteTask: (taskId: string) => void;
   context?: TaskContextActions;
   categories: string[];
@@ -247,6 +260,7 @@ export function TaskCollection({
 }) {
   const [newTask, setNewTask] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState("");
+  const [newTaskRepeat, setNewTaskRepeat] = useState<TaskRepeat>("none");
   const titleId = useId();
   const visibleTasks = filterByCategory(tasks, selectedCategory);
   const sourceLabel = (task: Task) => period === "day" && task.period === "week" ? "From this week’s list" : "";
@@ -255,9 +269,10 @@ export function TaskCollection({
     event.preventDefault();
     const title = newTask.trim();
     if (!title) return;
-    onAddTask(title, period, periodKey, newTaskCategory);
+    onAddTask(title, period, periodKey, newTaskCategory, newTaskRepeat);
     setNewTask("");
     setNewTaskCategory("");
+    setNewTaskRepeat("none");
   }
 
   return (
@@ -292,13 +307,16 @@ export function TaskCollection({
           placeholder={period === "day" ? "Add something for today" : "Add something for this week"}
           maxLength={180}
         />
-        <CategoryInput
-          id={`${titleId}-new-category`}
-          value={newTaskCategory}
-          categories={categories}
-          onChange={setNewTaskCategory}
-          className="add-task-category"
-        />
+        <div className="add-task-options">
+          <CategoryInput
+            id={`${titleId}-new-category`}
+            value={newTaskCategory}
+            categories={categories}
+            onChange={setNewTaskCategory}
+            className="add-task-category"
+          />
+          <RepeatInput id={`${titleId}-new-repeat`} value={newTaskRepeat} period={period} onChange={setNewTaskRepeat} />
+        </div>
         <button type="submit" disabled={!newTask.trim()}>Add</button>
       </form>
 

@@ -6,6 +6,20 @@ type CategorizedItem = { category?: string };
 
 export type TaskPeriod = "day" | "week";
 export type TaskStatus = "todo" | "doing" | "done";
+export type TaskRepeat = "none" | "daily" | "weekdays" | "weekly";
+
+export type RecurringTask = {
+  id: string;
+  title: string;
+  category?: string;
+  period: TaskPeriod;
+  repeat: Exclude<TaskRepeat, "none">;
+  startKey: string;
+  active: boolean;
+  skippedKeys: string[];
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type Task = {
   id: string;
@@ -19,6 +33,7 @@ export type Task = {
   dismissedOn?: string;
   completedAt?: string;
   category?: string;
+  recurringTaskId?: string;
 };
 
 export type ProjectStatus = "planned" | "active" | "paused" | "complete";
@@ -48,6 +63,7 @@ export type WorkspaceData = {
   ideas: CreativeIdea[];
   rolloverHandled: Record<string, "carried" | "kept">;
   categories?: string[];
+  recurringTasks?: RecurringTask[];
 };
 
 const STORAGE_KEY = "daybook-workspace-v1";
@@ -61,6 +77,7 @@ export function emptyWorkspace(): WorkspaceData {
     ideas: [],
     rolloverHandled: {},
     categories: [],
+    recurringTasks: [],
   };
 }
 
@@ -131,7 +148,8 @@ function isTask(value: unknown): value is Task {
     (value.carriedFrom === undefined || typeof value.carriedFrom === "string") &&
     (value.dismissedOn === undefined || (typeof value.dismissedOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.dismissedOn))) &&
     (value.completedAt === undefined || (typeof value.completedAt === "string" && Number.isFinite(Date.parse(value.completedAt)))) &&
-    (value.category === undefined || isValidCategory(value.category))
+    (value.category === undefined || isValidCategory(value.category)) &&
+    (value.recurringTaskId === undefined || typeof value.recurringTaskId === "string")
   );
 }
 
@@ -159,6 +177,25 @@ function isIdea(value: unknown): value is CreativeIdea {
   );
 }
 
+function isDateKey(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T12:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function isRecurringTask(value: unknown): value is RecurringTask {
+  if (!isRecord(value)) return false;
+  return typeof value.id === "string" && typeof value.title === "string" &&
+    (value.category === undefined || isValidCategory(value.category)) &&
+    (value.period === "day" || value.period === "week") &&
+    (value.repeat === "daily" || value.repeat === "weekdays" || value.repeat === "weekly") &&
+    (value.period !== "week" || value.repeat === "weekly") &&
+    isDateKey(value.startKey) &&
+    typeof value.active === "boolean" && Array.isArray(value.skippedKeys) &&
+    value.skippedKeys.every(isDateKey) &&
+    typeof value.createdAt === "string" && typeof value.updatedAt === "string";
+}
+
 export function isWorkspaceData(value: unknown): value is WorkspaceData {
   return (
     isRecord(value) &&
@@ -168,6 +205,8 @@ export function isWorkspaceData(value: unknown): value is WorkspaceData {
     Array.isArray(value.ideas) && value.ideas.every(isIdea) &&
     isRecord(value.rolloverHandled) &&
     Object.values(value.rolloverHandled).every((entry) => entry === "carried" || entry === "kept") &&
+    (value.recurringTasks === undefined || (Array.isArray(value.recurringTasks) && value.recurringTasks.every(isRecurringTask) &&
+      new Set(value.recurringTasks.map((series) => series.id)).size === value.recurringTasks.length)) &&
     (value.categories === undefined || (
       Array.isArray(value.categories) &&
       value.categories.every(isValidCategory) &&
@@ -178,7 +217,7 @@ export function isWorkspaceData(value: unknown): value is WorkspaceData {
 }
 
 export function hasWorkspaceEntries(data: WorkspaceData) {
-  return data.tasks.length > 0 || data.projects.length > 0 || data.ideas.length > 0 || Boolean(data.categories?.length) || Object.keys(data.rolloverHandled).length > 0;
+  return data.tasks.length > 0 || data.projects.length > 0 || data.ideas.length > 0 || Boolean(data.categories?.length) || Boolean(data.recurringTasks?.length) || Object.keys(data.rolloverHandled).length > 0;
 }
 
 export type LegacyWorkspace = {
