@@ -5,7 +5,23 @@ import { getWorkspaceCollection } from "@/app/lib/mongodb";
 const responseHeaders = {
   "Cache-Control": "private, no-store",
   "Netlify-CDN-Cache-Control": "no-store",
+  "X-Workspace-API": "2",
 };
+
+function databaseUnavailable(error: unknown) {
+  const details = typeof error === "object" && error !== null ? error : {};
+  const name = "name" in details && typeof details.name === "string" ? details.name : "Error";
+  const errorCode = "code" in details ? details.code : undefined;
+  const code = !process.env.MONGODB_URI ? "MONGODB_URI_MISSING"
+    : errorCode === 18 ? "MONGODB_AUTHENTICATION_FAILED"
+    : name === "MongoParseError" ? "MONGODB_URI_INVALID"
+    : name === "MongoServerSelectionError" || name === "MongoNetworkError" ||
+      errorCode === "ENOTFOUND" || errorCode === "ECONNREFUSED" || errorCode === "ETIMEDOUT"
+      ? "MONGODB_CONNECTION_FAILED" : "MONGODB_ERROR";
+
+  console.error("Workspace database unavailable", { code, errorName: name });
+  return Response.json({ error: "MongoDB is not connected yet.", code }, { status: 503, headers: responseHeaders });
+}
 
 export async function GET() {
   try {
@@ -17,8 +33,8 @@ export async function GET() {
         : { exists: false, data: emptyWorkspace(), updatedAt: null, revision: null },
       { headers: responseHeaders },
     );
-  } catch {
-    return Response.json({ error: "MongoDB is not connected yet." }, { status: 503 });
+  } catch (error) {
+    return databaseUnavailable(error);
   }
 }
 
@@ -63,6 +79,6 @@ export async function PUT(request: Request) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {
       return Response.json({ error: "The workspace changed on another device. Retry using the latest version." }, { status: 409 });
     }
-    return Response.json({ error: "MongoDB could not save the workspace." }, { status: 503 });
+    return databaseUnavailable(error);
   }
 }
