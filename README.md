@@ -10,7 +10,7 @@ Run the development server:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Set `MONGODB_URI` and `WORKSPACE_PASSWORD` in the ignored `.env.local` file before signing in. The session secret is already generated there.
+Open [http://localhost:3000](http://localhost:3000). Set `MONGODB_URI` in the ignored `.env.local` file to use the shared MongoDB workspace.
 
 ## Online setup
 

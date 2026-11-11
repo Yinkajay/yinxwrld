@@ -15,7 +15,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [currentHash, setCurrentHash] = useState("");
   const isCreativePage = pathname.startsWith("/creative");
-  const isLoginPage = pathname === "/login";
 
   useEffect(() => {
     const syncHash = () => setCurrentHash(window.location.hash);
@@ -31,7 +30,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className={`app-frame ${isCreativePage ? "scene-winter" : "scene-sunset"}`}>
       <div className="scene-background" aria-hidden="true" />
-      {!isLoginPage && <header className="site-header">
+      <header className="site-header">
         <div className="site-header-inner">
           <Link className="brand" href="/" aria-label="yinxwrld home">
             <span className="brand-logo" aria-hidden="true" />
@@ -60,22 +59,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
-            <button
-              className="site-nav-link sign-out-link"
-              type="button"
-              onClick={() => {
-                void fetch("/api/auth/logout", { method: "POST" })
-                  .catch(() => undefined)
-                  .finally(() => window.location.assign("/login"));
-              }}
-            >
-              Sign out
-            </button>
           </nav>
         </div>
-      </header>}
+      </header>
       <main className="main-content">{children}</main>
-      {!isLoginPage && <DailyFooter />}
+      <DailyFooter />
     </div>
   );
 }

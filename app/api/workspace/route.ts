@@ -1,14 +1,8 @@
 import { emptyWorkspace, isWorkspaceData } from "@/app/lib/workspace";
-import { isSameOriginRequest, isValidSessionCookie } from "@/app/lib/auth";
+import { isSameOriginRequest } from "@/app/lib/request-security";
 import { getWorkspaceCollection } from "@/app/lib/mongodb";
 
-function unauthorized() {
-  return Response.json({ error: "Sign in to access this workspace." }, { status: 401 });
-}
-
-export async function GET(request: Request) {
-  if (!isValidSessionCookie(request.headers.get("cookie"))) return unauthorized();
-
+export async function GET() {
   try {
     const workspaces = await getWorkspaceCollection();
     const saved = await workspaces.findOne({ _id: "personal" });
@@ -24,7 +18,6 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  if (!isValidSessionCookie(request.headers.get("cookie"))) return unauthorized();
   if (!isSameOriginRequest(request)) {
     return Response.json({ error: "This workspace update was blocked." }, { status: 403 });
   }

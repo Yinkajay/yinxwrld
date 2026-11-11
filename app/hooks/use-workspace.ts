@@ -17,12 +17,6 @@ type RemoteWorkspace = {
   data: WorkspaceData;
 };
 
-class WorkspaceRequestError extends Error {
-  constructor(message: string, readonly status: number) {
-    super(message);
-  }
-}
-
 function enqueueRemoteTask<T>(queue: { current: Promise<void> }, task: () => Promise<T>) {
   const result = queue.current.catch(() => undefined).then(task);
   queue.current = result.then(() => undefined, () => undefined);
@@ -31,7 +25,7 @@ function enqueueRemoteTask<T>(queue: { current: Promise<void> }, task: () => Pro
 
 async function readRemoteWorkspace(): Promise<RemoteWorkspace> {
   const response = await fetch("/api/workspace", { cache: "no-store" });
-  if (!response.ok) throw new WorkspaceRequestError("Could not load the workspace.", response.status);
+  if (!response.ok) throw new Error("Could not load the workspace.");
 
   const result: unknown = await response.json();
   if (typeof result !== "object" || result === null || !("data" in result) || !isWorkspaceData(result.data)) {
@@ -50,7 +44,7 @@ async function writeRemoteWorkspace(data: WorkspaceData): Promise<WorkspaceData>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ data }),
   });
-  if (!response.ok) throw new WorkspaceRequestError("Could not save the workspace.", response.status);
+  if (!response.ok) throw new Error("Could not save the workspace.");
 
   const result: unknown = await response.json();
   if (typeof result !== "object" || result === null || !("data" in result) || !isWorkspaceData(result.data)) {
@@ -59,11 +53,7 @@ async function writeRemoteWorkspace(data: WorkspaceData): Promise<WorkspaceData>
   return result.data;
 }
 
-function failureMessage(error: unknown, hasLocalCopy: boolean) {
-  if (error instanceof WorkspaceRequestError && error.status === 401) {
-    return "Your sign in expired. Sign in again to sync your workspace.";
-  }
-
+function failureMessage(hasLocalCopy: boolean) {
   return hasLocalCopy
     ? "MongoDB is unavailable. Changes are saved in this browser and will sync when the connection returns."
     : "MongoDB is unavailable and browser storage cannot be used. Changes may not be saved.";
@@ -95,11 +85,8 @@ export function useWorkspace() {
     setPendingWorkspaceSync(false);
   }, [writeLocalCopy]);
 
-  const handleRemoteFailure = useCallback((error: unknown) => {
-    setStorageMessage(failureMessage(error, localWritableRef.current));
-    if (error instanceof WorkspaceRequestError && error.status === 401) {
-      window.location.assign("/login");
-    }
+  const handleRemoteFailure = useCallback(() => {
+    setStorageMessage(failureMessage(localWritableRef.current));
   }, []);
 
   const queueRemoteWrite = useCallback((snapshot: WorkspaceData) => {

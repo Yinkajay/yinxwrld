@@ -113,6 +113,37 @@ function LoadingPanels({ showWeek }: { showWeek: boolean }) {
   );
 }
 
+function HistoryTaskRow({ task, onDelete }: { task: Task; onDelete: (taskId: string) => void }) {
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const statusLabel = task.status === "todo" ? "To do" : task.status === "doing" ? "Doing" : "Done";
+
+  return (
+    <li className={task.status === "done" ? "is-done" : ""}>
+      <span className={`history-status status-${task.status}`} aria-label={statusLabel} />
+      <span className="history-task-title">{task.title}</span>
+      <span className={`history-status-label status-label-${task.status}`}>{statusLabel}</span>
+      <div className="history-actions">
+        {isConfirmingDelete ? (
+          <>
+            <span className="delete-question">Delete?</span>
+            <button className="icon-action delete-confirm" type="button" onClick={() => onDelete(task.id)}>Delete</button>
+            <button className="icon-action" type="button" onClick={() => setIsConfirmingDelete(false)}>Cancel</button>
+          </>
+        ) : (
+          <button
+            className="icon-action history-delete-action"
+            type="button"
+            aria-label={`Delete ${task.title} from history`}
+            onClick={() => setIsConfirmingDelete(true)}
+          >
+            Delete
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}
+
 export default function Dashboard() {
   const { data, isLoaded, storageMessage, updateWorkspace } = useWorkspace();
   const [todayKey, setTodayKey] = useState<string | null>(null);
@@ -349,11 +380,7 @@ export default function Dashboard() {
           {historyTasks.length ? (
             <ul className="history-list">
               {historyTasks.map((task) => (
-                <li key={task.id} className={task.status === "done" ? "is-done" : ""}>
-                  <span className={`history-status status-${task.status}`} aria-label={task.status === "todo" ? "To do" : task.status === "doing" ? "Doing" : "Done"} />
-                  <span className="history-task-title">{task.title}</span>
-                  <span className={`history-status-label status-label-${task.status}`}>{task.status === "todo" ? "To do" : task.status === "doing" ? "Doing" : "Done"}</span>
-                </li>
+                <HistoryTaskRow key={task.id} task={task} onDelete={deleteTask} />
               ))}
             </ul>
           ) : (
