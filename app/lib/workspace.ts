@@ -47,6 +47,7 @@ export type WorkspaceLoadResult = {
 };
 
 const STORAGE_KEY = "daybook-workspace-v1";
+const PENDING_SYNC_KEY = `${STORAGE_KEY}:pending-sync`;
 const CHANGE_EVENT = "daybook-workspace-change";
 
 export function emptyWorkspace(): WorkspaceData {
@@ -100,7 +101,7 @@ function isIdea(value: unknown): value is CreativeIdea {
   );
 }
 
-function isWorkspaceData(value: unknown): value is WorkspaceData {
+export function isWorkspaceData(value: unknown): value is WorkspaceData {
   return (
     isRecord(value) &&
     value.version === 1 &&
@@ -110,6 +111,10 @@ function isWorkspaceData(value: unknown): value is WorkspaceData {
     isRecord(value.rolloverHandled) &&
     Object.values(value.rolloverHandled).every((entry) => entry === "carried" || entry === "kept")
   );
+}
+
+export function hasWorkspaceEntries(data: WorkspaceData) {
+  return data.tasks.length > 0 || data.projects.length > 0 || data.ideas.length > 0 || Object.keys(data.rolloverHandled).length > 0;
 }
 
 export function loadWorkspace(): WorkspaceLoadResult {
@@ -146,6 +151,26 @@ export function saveWorkspace(data: WorkspaceData): boolean {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     window.dispatchEvent(new Event(CHANGE_EVENT));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function hasPendingWorkspaceSync() {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(PENDING_SYNC_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function setPendingWorkspaceSync(pending: boolean) {
+  if (typeof window === "undefined") return false;
+  try {
+    if (pending) window.localStorage.setItem(PENDING_SYNC_KEY, "true");
+    else window.localStorage.removeItem(PENDING_SYNC_KEY);
     return true;
   } catch {
     return false;

@@ -125,6 +125,23 @@ export default function Dashboard() {
   const [historySelection, setHistorySelection] = useState("");
 
   useEffect(() => {
+    const syncHistoryFromHash = () => setHistoryOpen(window.location.hash === "#history");
+    const openHistoryFromNavigation = () => setHistoryOpen(true);
+    syncHistoryFromHash();
+    window.addEventListener("hashchange", syncHistoryFromHash);
+    window.addEventListener("yinxwrld:open-history", openHistoryFromNavigation);
+    return () => {
+      window.removeEventListener("hashchange", syncHistoryFromHash);
+      window.removeEventListener("yinxwrld:open-history", openHistoryFromNavigation);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!historyOpen || !isLoaded || window.location.hash !== "#history") return;
+    document.getElementById("history-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [historyOpen, isLoaded]);
+
+  useEffect(() => {
     const updateClock = () => setTodayKey(getLagosDayKey(new Date()));
     updateClock();
     const interval = window.setInterval(updateClock, 60_000);
@@ -198,7 +215,6 @@ export default function Dashboard() {
         <div className="heading-copy">
           <p className="eyebrow">{todayKey ? formatDayLabel(todayKey) : "YOUR PERSONAL SPACE"}</p>
           <h1>What’s on today?</h1>
-          <p className="page-subtitle">One day at a time. Your week is here when you need it.</p>
         </div>
       </header>
 
@@ -216,7 +232,6 @@ export default function Dashboard() {
       <section className="planner-section" aria-labelledby="planner-heading">
         <header className="section-heading planner-section-heading">
           <div>
-            <p className="panel-kicker">{combined ? "BOTH LISTS" : showWeek ? "TODAY AND THIS WEEK" : "TODAY"}</p>
             <h2 id="planner-heading">{combined ? "Everything in motion" : showWeek ? "The days ahead" : "Your list"}</h2>
           </div>
           <div className="planner-heading-actions">
@@ -230,15 +245,6 @@ export default function Dashboard() {
                 {showWeek ? "Today only" : "Show both"}
               </button>
             )}
-            <button
-              className={`button button-quiet history-button${historyOpen ? " is-on" : ""}`}
-              type="button"
-              aria-expanded={historyOpen}
-              aria-controls="history-panel"
-              onClick={() => setHistoryOpen((current) => !current)}
-            >
-              {historyOpen ? "Close history" : "Look back"}
-            </button>
             {(showWeek || combined) && (
               <button
                 className={`button combine-button${combined ? " is-on" : ""}`}
@@ -320,6 +326,11 @@ export default function Dashboard() {
               <p>Previous lists stay here, just as you left them.</p>
             </div>
             <div className="history-controls">
+              <button className="button button-quiet" type="button" onClick={() => {
+                setHistoryOpen(false);
+                window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+                window.dispatchEvent(new Event("hashchange"));
+              }}>Close</button>
               <div className="view-toggle" role="group" aria-label="Choose history period">
                 <button type="button" className={historyPeriod === "day" ? "is-selected" : ""} aria-pressed={historyPeriod === "day"} onClick={() => { setHistoryPeriod("day"); setHistorySelection(""); }}>Days</button>
                 <button type="button" className={historyPeriod === "week" ? "is-selected" : ""} aria-pressed={historyPeriod === "week"} onClick={() => { setHistoryPeriod("week"); setHistorySelection(""); }}>Weeks</button>
