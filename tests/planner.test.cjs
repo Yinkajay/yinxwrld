@@ -137,6 +137,7 @@ test("built-in and custom category names are shared, trimmed, and deduplicated",
   assert.equal(workspace.normalizeCategoryName("  side   project ", ["Side Project"]), "Side Project");
   assert.deepEqual(workspace.addCustomCategory(["Art"], "Art"), ["Art"]);
   assert.deepEqual(workspace.addCustomCategory(["Art"], "Design"), ["Art", "Design"]);
+  assert.deepEqual(workspace.mergeCategoryLists(["Art", "Design"], ["art", "Writing"]), ["Art", "Design", "Writing"]);
 });
 
 test("category filters match the selected category and always retain uncategorized items", () => {

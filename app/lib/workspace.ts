@@ -91,6 +91,20 @@ export function addCustomCategory(categories: string[] = [], category?: string) 
   return [...categories, category];
 }
 
+export function mergeCategoryLists(...lists: Array<string[] | undefined>) {
+  const merged: string[] = [];
+  const seen = new Set<string>();
+  for (const categories of lists) {
+    for (const category of categories ?? []) {
+      const key = category.toLocaleLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(category);
+    }
+  }
+  return merged;
+}
+
 export function filterByCategory<T extends CategorizedItem>(items: T[], category: string) {
   if (!category) return items;
   return items.filter((item) => !item.category || item.category === category);

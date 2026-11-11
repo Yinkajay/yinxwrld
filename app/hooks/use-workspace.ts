@@ -5,6 +5,7 @@ import {
   clearLegacyWorkspace,
   emptyWorkspace,
   hasWorkspaceEntries,
+  mergeCategoryLists,
   readLegacyWorkspace,
   type LegacyWorkspace,
   type WorkspaceData,
@@ -38,6 +39,7 @@ function mergeWorkspaces(remote: WorkspaceData, legacy: WorkspaceData): Workspac
     projects: mergeById(remote.projects, legacy.projects),
     ideas: mergeById(remote.ideas, legacy.ideas),
     rolloverHandled: { ...remote.rolloverHandled, ...legacy.rolloverHandled },
+    categories: mergeCategoryLists(remote.categories, legacy.categories),
   };
 }
 
