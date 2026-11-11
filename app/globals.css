@@ -17,6 +17,12 @@
   --warm: #d89061;
   --warm-soft: #f5e9de;
   --danger: #a85445;
+  --status-todo-ink: #245aa0;
+  --status-todo-fill: #eaf2ff;
+  --status-doing-ink: #85510b;
+  --status-doing-fill: #fff2d6;
+  --status-done-ink: #256441;
+  --status-done-fill: #e8f4ec;
   --radius-card: 16px;
   --radius-small: 8px;
   --shadow-soft: 0 8px 28px rgb(45 49 38 / 5%);
@@ -685,6 +691,27 @@ button:disabled {
   list-style: none;
 }
 
+.status-todo,
+.column-todo,
+.status-label-todo {
+  --stage-ink: var(--status-todo-ink);
+  --stage-fill: var(--status-todo-fill);
+}
+
+.status-doing,
+.column-doing,
+.status-label-doing {
+  --stage-ink: var(--status-doing-ink);
+  --stage-fill: var(--status-doing-fill);
+}
+
+.status-done,
+.column-done,
+.status-label-done {
+  --stage-ink: var(--status-done-ink);
+  --stage-fill: var(--status-done-fill);
+}
+
 .task-item {
   display: flex;
   min-width: 0;
@@ -706,9 +733,9 @@ button:disabled {
   flex: 0 0 20px;
   place-items: center;
   padding: 0;
-  border: 1.5px solid #c5c8b9;
+  border: 1.5px solid var(--stage-ink);
   border-radius: 50%;
-  background: transparent;
+  background: var(--stage-fill);
   color: white;
   cursor: pointer;
   font-size: 12px;
@@ -717,13 +744,13 @@ button:disabled {
 }
 
 .task-check:hover {
-  border-color: var(--accent);
+  border-color: var(--stage-ink);
   transform: scale(1.06);
 }
 
 .task-check[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: var(--accent);
+  border-color: var(--stage-ink);
+  background: var(--stage-ink);
 }
 
 .task-item-body {
@@ -779,6 +806,22 @@ button:disabled {
 .project-status-select:hover {
   border-color: var(--line);
   background-color: #f8f7f2;
+}
+
+.task-item .status-select {
+  border-color: var(--stage-fill);
+  background-color: var(--stage-fill);
+  color: var(--stage-ink);
+  font-weight: 600;
+}
+
+.task-item .status-select:hover {
+  border-color: var(--stage-ink);
+}
+
+.status-select option {
+  background: var(--surface);
+  color: var(--foreground);
 }
 
 .task-actions {
@@ -956,13 +999,14 @@ button:disabled {
   min-height: 170px;
   padding: 8px;
   border: 1px solid #eeede6;
+  border-top: 3px solid var(--stage-ink);
   border-radius: 8px;
   background: #faf9f4;
   transition: border-color 220ms cubic-bezier(0.32, 0.72, 0, 1), background-color 220ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .kanban-column:has(.kanban-card:active) {
-  background: #f4f5ec;
+  background: var(--stage-fill);
 }
 
 .kanban-column-heading {
@@ -975,7 +1019,7 @@ button:disabled {
 
 .kanban-column-heading h3 {
   margin: 0;
-  color: #696b61;
+  color: var(--stage-ink);
   font-size: 12px;
   font-weight: 650;
 }
@@ -986,19 +1030,9 @@ button:disabled {
   height: 20px;
   place-items: center;
   border-radius: 999px;
-  background: #eeede6;
-  color: #73756b;
+  background: var(--stage-fill);
+  color: var(--stage-ink);
   font-size: 12px;
-}
-
-.column-doing .kanban-column-heading span {
-  background: #f3e9db;
-  color: #8a6740;
-}
-
-.column-done .kanban-column-heading span {
-  background: #e7eddf;
-  color: var(--accent-dark);
 }
 
 .kanban-list {
@@ -1221,18 +1255,9 @@ button:disabled {
   width: 10px;
   height: 10px;
   flex: 0 0 10px;
-  border: 1px solid #b7b9ad;
+  border: 1px solid var(--stage-ink);
   border-radius: 50%;
-}
-
-.history-status.status-doing {
-  border-color: #c08b56;
-  background: #f1dfca;
-}
-
-.history-status.status-done {
-  border-color: var(--accent);
-  background: var(--accent);
+  background: var(--stage-ink);
 }
 
 .history-task-title {
@@ -1249,12 +1274,11 @@ button:disabled {
 }
 
 .history-status-label {
-  color: #686a61;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--stage-fill);
+  color: var(--stage-ink);
   font-size: 14px;
-}
-
-.history-status-label.status-label-done {
-  color: var(--accent-dark);
 }
 
 .history-empty {

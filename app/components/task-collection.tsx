@@ -59,7 +59,7 @@ function TaskItem({
   }
 
   return (
-    <div className={`task-item${task.status === "done" ? " is-done" : ""}`}>
+    <div className={`task-item status-${task.status}${task.status === "done" ? " is-done" : ""}`}>
       <button
         className="task-check"
         type="button"
