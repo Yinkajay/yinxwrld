@@ -6,6 +6,7 @@ type StoredWorkspace = {
   _id: "personal";
   data: WorkspaceData;
   updatedAt: string;
+  revision?: string;
 };
 
 type MongoGlobal = typeof globalThis & {

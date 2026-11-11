@@ -20,11 +20,13 @@ This version has no sign in. Anyone who can reach the site can read, change, or 
 
 ## Deploy on Netlify
 
-Netlify detects the Next.js app and runs its Next.js adapter automatically; the App Router and API route handlers run on Netlify's serverless functions. No `netlify.toml` or manually pinned Next.js adapter is needed. The repository includes `.nvmrc` to keep the build and function runtime on Node.js 22, which meets the MongoDB driver requirement.
+Netlify detects the Next.js app and runs its Next.js adapter automatically; the App Router and API route handlers run on Netlify's serverless functions. The repository's `netlify.toml` sets the build command and `.next` publish directory. The repository includes `.nvmrc` to keep the build and function runtime on Node.js 22, which meets the MongoDB driver requirement.
 
 Connect the repository in the Netlify dashboard and use the detected Next.js build settings (`next build`, `.next`). Add `MONGODB_URI` and `MONGODB_DB` under **Project configuration → Environment variables**. Keep them server-only and enable the **Builds** and **Functions** scopes.
 
 Netlify's standard Functions use changing outbound IP addresses, so this setup uses the `0.0.0.0/0` Atlas entry you approved. Atlas still requires the database user's credentials, and that user should only have read/write access to the `yinxwrld` database.
+
+`MONGODB_DB` is a database name, not a credential. If Netlify marks its value as a secret, it can flag ordinary mentions of the app name and block deployment. `netlify.toml` excludes only `MONGODB_DB` from secret scanning; `MONGODB_URI` remains protected. Keep database credentials out of client code and tracked files.
 
 ## Workspace storage and sync behavior
 
@@ -32,4 +34,4 @@ MongoDB is the only ongoing persistent store. The browser does not keep an offli
 
 When the updated app first opens, it imports the old browser-saved workspace into MongoDB, merging records if MongoDB already has a workspace. Once the import succeeds, it removes the old browser copy. This migration only sees data saved for the same site origin and browser; `localhost` and the Netlify site have separate browser storage.
 
-If two devices edit at once, the most recently saved full workspace snapshot wins. This is intended for one person using the workspace across devices; it does not merge simultaneous edits item by item.
+Visible pages refresh from MongoDB every five seconds, and immediately when the tab regains focus or the connection returns. Each edit is applied to the latest database state. A revision check rejects stale writes, and the client retries its change against the newer data, preserving independent changes made on another device.

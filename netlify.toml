@@ -1,0 +1,8 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # The database name is configuration, and also appears in the public brand.
+  # Continue scanning credentials such as MONGODB_URI.
+  SECRETS_SCAN_OMIT_KEYS = "MONGODB_DB"

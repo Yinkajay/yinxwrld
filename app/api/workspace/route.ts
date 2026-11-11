@@ -2,15 +2,20 @@ import { emptyWorkspace, isWorkspaceData } from "@/app/lib/workspace";
 import { isSameOriginRequest } from "@/app/lib/request-security";
 import { getWorkspaceCollection } from "@/app/lib/mongodb";
 
+const responseHeaders = {
+  "Cache-Control": "private, no-store",
+  "Netlify-CDN-Cache-Control": "no-store",
+};
+
 export async function GET() {
   try {
     const workspaces = await getWorkspaceCollection();
     const saved = await workspaces.findOne({ _id: "personal" });
     return Response.json(
       saved
-        ? { exists: true, data: saved.data, updatedAt: saved.updatedAt }
-        : { exists: false, data: emptyWorkspace(), updatedAt: null },
-      { headers: { "Cache-Control": "no-store" } },
+        ? { exists: true, data: saved.data, updatedAt: saved.updatedAt, revision: saved.revision ?? null }
+        : { exists: false, data: emptyWorkspace(), updatedAt: null, revision: null },
+      { headers: responseHeaders },
     );
   } catch {
     return Response.json({ error: "MongoDB is not connected yet." }, { status: 503 });
@@ -33,19 +38,31 @@ export async function PUT(request: Request) {
     return Response.json({ error: "The workspace data did not match the expected format." }, { status: 400 });
   }
 
+  if (!("expectedRevision" in body) || (body.expectedRevision !== null && typeof body.expectedRevision !== "string")) {
+    return Response.json({ error: "Refresh this page before saving changes." }, { status: 409 });
+  }
+
   try {
     const workspaces = await getWorkspaceCollection();
     const data = body.data;
     const updatedAt = new Date().toISOString();
+    const revision = crypto.randomUUID();
 
-    await workspaces.updateOne(
-      { _id: "personal" },
-      { $set: { data, updatedAt } },
-      { upsert: true },
+    const result = await workspaces.updateOne(
+      { _id: "personal", revision: body.expectedRevision === null ? { $exists: false } : body.expectedRevision },
+      { $set: { data, updatedAt, revision } },
+      { upsert: body.expectedRevision === null },
     );
 
-    return Response.json({ data, updatedAt }, { headers: { "Cache-Control": "no-store" } });
-  } catch {
+    if (!result.matchedCount && !result.upsertedCount) {
+      return Response.json({ error: "The workspace changed on another device. Retry using the latest version." }, { status: 409 });
+    }
+
+    return Response.json({ data, updatedAt, revision }, { headers: responseHeaders });
+  } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {
+      return Response.json({ error: "The workspace changed on another device. Retry using the latest version." }, { status: 409 });
+    }
     return Response.json({ error: "MongoDB could not save the workspace." }, { status: 503 });
   }
 }

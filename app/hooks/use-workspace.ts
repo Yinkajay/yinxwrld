@@ -5,51 +5,16 @@ import {
   clearLegacyWorkspace,
   emptyWorkspace,
   hasWorkspaceEntries,
-  isWorkspaceData,
   readLegacyWorkspace,
   type LegacyWorkspace,
   type WorkspaceData,
 } from "@/app/lib/workspace";
-
-type RemoteWorkspace = {
-  exists: boolean;
-  data: WorkspaceData;
-};
+import { persistWorkspaceMutation, readRemoteWorkspace, type WorkspaceMutation } from "@/app/lib/workspace-client";
 
 function enqueueRemoteTask<T>(queue: { current: Promise<void> }, task: () => Promise<T>) {
   const result = queue.current.catch(() => undefined).then(task);
   queue.current = result.then(() => undefined, () => undefined);
   return result;
-}
-
-async function readRemoteWorkspace(): Promise<RemoteWorkspace> {
-  const response = await fetch("/api/workspace", { cache: "no-store" });
-  if (!response.ok) throw new Error("Could not load the workspace from MongoDB.");
-
-  const result: unknown = await response.json();
-  if (typeof result !== "object" || result === null || !("data" in result) || !isWorkspaceData(result.data)) {
-    throw new Error("MongoDB returned workspace data in an unexpected format.");
-  }
-
-  return {
-    exists: "exists" in result && result.exists === true,
-    data: result.data,
-  };
-}
-
-async function writeRemoteWorkspace(data: WorkspaceData): Promise<WorkspaceData> {
-  const response = await fetch("/api/workspace", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ data }),
-  });
-  if (!response.ok) throw new Error("Could not save the workspace to MongoDB.");
-
-  const result: unknown = await response.json();
-  if (typeof result !== "object" || result === null || !("data" in result) || !isWorkspaceData(result.data)) {
-    throw new Error("MongoDB returned workspace data in an unexpected format.");
-  }
-  return result.data;
 }
 
 function isSameWorkspace(left: WorkspaceData, right: WorkspaceData) {
@@ -88,6 +53,8 @@ export function useWorkspace() {
   const isConnectedRef = useRef(false);
   const remoteQueueRef = useRef<Promise<void>>(Promise.resolve());
   const legacyWorkspaceRef = useRef<LegacyWorkspace | null>(null);
+  const pendingWritesRef = useRef(0);
+  const refreshPromiseRef = useRef<Promise<void> | null>(null);
 
   const adoptWorkspace = useCallback((next: WorkspaceData) => {
     dataRef.current = next;
@@ -105,22 +72,15 @@ export function useWorkspace() {
   }, []);
 
   const loadFromMongo = useCallback(async () => {
-    const remote = await readRemoteWorkspace();
+    let remote = await readRemoteWorkspace();
     const legacy = legacyWorkspaceRef.current;
-    let next = remote.exists ? remote.data : emptyWorkspace();
-    let shouldWrite = false;
 
     if (legacy?.data && hasWorkspaceEntries(legacy.data)) {
-      if (!remote.exists) {
-        next = legacy.data;
-        shouldWrite = true;
-      } else {
-        next = mergeWorkspaces(remote.data, legacy.data);
-        shouldWrite = !isSameWorkspace(next, remote.data);
+      const legacyData = legacy.data;
+      if (!isSameWorkspace(mergeWorkspaces(remote.data, legacyData), remote.data)) {
+        remote = await persistWorkspaceMutation((current) => mergeWorkspaces(current, legacyData));
       }
     }
-
-    if (shouldWrite) next = await writeRemoteWorkspace(next);
 
     let legacyWarning: string | null = null;
     if (legacy) {
@@ -131,54 +91,65 @@ export function useWorkspace() {
       }
     }
 
-    adoptWorkspace(next);
+    if (pendingWritesRef.current === 0) adoptWorkspace(remote.data);
     if (legacyWarning) setStorageMessage(legacyWarning);
   }, [adoptWorkspace]);
 
   const queueRemoteRefresh = useCallback(() => {
-    void enqueueRemoteTask(remoteQueueRef, loadFromMongo).catch(markUnavailable);
+    if (refreshPromiseRef.current) return refreshPromiseRef.current;
+    if (pendingWritesRef.current > 0) return Promise.resolve();
+
+    const refresh = enqueueRemoteTask(remoteQueueRef, loadFromMongo)
+      .catch(markUnavailable)
+      .finally(() => { refreshPromiseRef.current = null; });
+    refreshPromiseRef.current = refresh;
+    return refresh;
   }, [loadFromMongo, markUnavailable]);
 
   const retryConnection = useCallback(() => {
-    queueRemoteRefresh();
+    void queueRemoteRefresh();
   }, [queueRemoteRefresh]);
 
-  const queueRemoteWrite = useCallback((snapshot: WorkspaceData) => {
+  const queueRemoteWrite = useCallback((update: WorkspaceMutation) => {
+    pendingWritesRef.current += 1;
     void enqueueRemoteTask(remoteQueueRef, async () => {
-      const saved = await writeRemoteWorkspace(snapshot);
-      persistedDataRef.current = saved;
-      if (isSameWorkspace(dataRef.current, snapshot)) adoptWorkspace(saved);
+      const saved = await persistWorkspaceMutation(update);
+      persistedDataRef.current = saved.data;
+      if (pendingWritesRef.current === 1) adoptWorkspace(saved.data);
     }).catch(() => {
       markUnavailable();
-      if (isSameWorkspace(dataRef.current, snapshot)) {
+      if (pendingWritesRef.current === 1) {
         dataRef.current = persistedDataRef.current;
         setData(persistedDataRef.current);
       }
-    });
+    }).finally(() => { pendingWritesRef.current -= 1; });
   }, [adoptWorkspace, markUnavailable]);
 
   useEffect(() => {
     let cancelled = false;
     legacyWorkspaceRef.current = readLegacyWorkspace();
 
-    void enqueueRemoteTask(remoteQueueRef, loadFromMongo)
-      .catch(markUnavailable)
+    void queueRemoteRefresh()
       .finally(() => {
         if (!cancelled) setIsLoaded(true);
       });
 
     const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") queueRemoteRefresh();
+      if (document.visibilityState === "visible") void queueRemoteRefresh();
     };
     window.addEventListener("focus", refreshWhenVisible);
     document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("online", refreshWhenVisible);
+    const interval = window.setInterval(refreshWhenVisible, 5_000);
 
     return () => {
       cancelled = true;
       window.removeEventListener("focus", refreshWhenVisible);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("online", refreshWhenVisible);
+      window.clearInterval(interval);
     };
-  }, [loadFromMongo, markUnavailable, queueRemoteRefresh]);
+  }, [queueRemoteRefresh]);
 
   const updateWorkspace = useCallback((update: (current: WorkspaceData) => WorkspaceData) => {
     if (!isConnectedRef.current) return;
@@ -186,7 +157,7 @@ export function useWorkspace() {
     const next = update(dataRef.current);
     dataRef.current = next;
     setData(next);
-    queueRemoteWrite(next);
+    queueRemoteWrite(update);
   }, [queueRemoteWrite]);
 
   return { data, isLoaded, isConnected, storageMessage, retryConnection, updateWorkspace };
