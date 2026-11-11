@@ -15,6 +15,7 @@ import {
 } from "@/app/lib/workspace";
 import { TaskBoard, TaskCollection } from "@/app/components/task-collection";
 import StorageNotice from "@/app/components/storage-notice";
+import { changeTask, copyTaskToPeriod, moveDailyTaskToWeek, selectPlannerTasks, setWeeklyDismissal, type TaskChange } from "@/app/lib/planner";
 
 type RolloverReview = {
   key: string;
@@ -165,16 +166,28 @@ export default function Dashboard() {
   }, [historyOpen, isLoaded]);
 
   useEffect(() => {
-    const updateClock = () => setTodayKey(getLagosDayKey(new Date()));
+    let timer: number;
+    const updateClock = () => {
+      window.clearTimeout(timer);
+      const now = new Date();
+      const day = getLagosDayKey(now);
+      setTodayKey(day);
+      const nextMidnight = Date.parse(`${addDaysToKey(day, 1)}T00:00:00+01:00`);
+      timer = window.setTimeout(updateClock, nextMidnight - now.getTime() + 100);
+    };
+    const refreshWhenVisible = () => { if (document.visibilityState === "visible") updateClock(); };
     updateClock();
-    const interval = window.setInterval(updateClock, 60_000);
-    return () => window.clearInterval(interval);
+    window.addEventListener("focus", updateClock);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("focus", updateClock);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, []);
 
   const weekKey = todayKey ? getWeekStartKey(todayKey) : null;
-  const dayTasks = data.tasks.filter((task) => task.period === "day" && task.periodKey === todayKey);
-  const weekTasks = data.tasks.filter((task) => task.period === "week" && task.periodKey === weekKey);
-  const currentTasks = [...dayTasks, ...weekTasks];
+  const { dayTasks, weekTasks, currentTasks } = selectPlannerTasks(data.tasks, todayKey);
   const pastDayKeys = [...new Set(data.tasks.filter((task) => task.period === "day" && task.periodKey !== todayKey).map((task) => task.periodKey))].sort().reverse();
   const pastWeekKeys = [...new Set(data.tasks.filter((task) => task.period === "week" && task.periodKey !== weekKey).map((task) => task.periodKey))].sort().reverse();
   const historyKeys = historyPeriod === "day" ? pastDayKeys : pastWeekKeys;
@@ -198,14 +211,29 @@ export default function Dashboard() {
     updateWorkspace((current) => ({ ...current, tasks: [...current.tasks, task] }));
   }
 
-  function updateTask(taskId: string, change: Partial<Pick<Task, "title" | "status">>) {
+  function updateTask(taskId: string, change: TaskChange) {
+    const now = new Date().toISOString();
     updateWorkspace((current) => ({
       ...current,
-      tasks: current.tasks.map((task) => task.id === taskId
-        ? { ...task, ...change, updatedAt: new Date().toISOString() }
-        : task),
+      tasks: changeTask(current.tasks, taskId, change, now),
     }));
   }
+
+  function moveToWeek(taskId: string) {
+    const now = new Date().toISOString();
+    updateWorkspace((current) => ({ ...current, tasks: moveDailyTaskToWeek(current.tasks, taskId, now) }));
+  }
+
+  function setDismissed(taskId: string, dismissed: boolean) {
+    const now = new Date().toISOString();
+    updateWorkspace((current) => ({ ...current, tasks: setWeeklyDismissal(current.tasks, taskId, dismissed, now) }));
+  }
+
+  const taskContext = {
+    todayKey: todayKey ?? "",
+    onMoveToWeek: moveToWeek,
+    onShowInToday: (taskId: string) => setDismissed(taskId, false),
+  };
 
   function deleteTask(taskId: string) {
     updateWorkspace((current) => ({ ...current, tasks: current.tasks.filter((task) => task.id !== taskId) }));
@@ -213,16 +241,12 @@ export default function Dashboard() {
 
   function markRolloverHandled(review: RolloverReview, outcome: "carried" | "kept", selectedIds: string[] = []) {
     const now = new Date().toISOString();
+    const copiedIds = new Map(selectedIds.map((id) => [id, createId()]));
     updateWorkspace((current) => {
+      if (current.rolloverHandled[review.key]) return current;
       const sourceTasks = current.tasks.filter((task) => selectedIds.includes(task.id));
-      const carriedTasks = sourceTasks.map((task) => ({
-        ...task,
-        id: createId(),
-        periodKey: review.targetKey,
-        carriedFrom: task.id,
-        createdAt: now,
-        updatedAt: now,
-      }));
+      const carriedTasks = sourceTasks.filter((task) => task.status !== "done")
+        .map((task) => copyTaskToPeriod(task, copiedIds.get(task.id)!, review.targetKey, now));
 
       return {
         ...current,
@@ -305,6 +329,7 @@ export default function Dashboard() {
                 sourceLabel={(task) => task.period === "day" ? "Today" : "This week"}
                 onUpdate={updateTask}
                 onDelete={deleteTask}
+                context={taskContext}
               />
             ) : (
               <div className="combined-empty empty-state">
@@ -327,6 +352,7 @@ export default function Dashboard() {
               onAddTask={addTask}
               onUpdateTask={updateTask}
               onDeleteTask={deleteTask}
+              context={{ ...taskContext, onDismissForToday: (taskId) => setDismissed(taskId, true) }}
             />
             {showWeek && (
               <TaskCollection
@@ -340,6 +366,7 @@ export default function Dashboard() {
                 onAddTask={addTask}
                 onUpdateTask={updateTask}
                 onDeleteTask={deleteTask}
+                context={taskContext}
               />
             )}
           </div>

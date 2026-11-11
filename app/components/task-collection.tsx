@@ -2,6 +2,8 @@
 
 import { useId, useState, type DragEvent, type FormEvent } from "react";
 import type { Task, TaskPeriod, TaskStatus } from "@/app/lib/workspace";
+import type { TaskChange } from "@/app/lib/planner";
+import TaskMenu, { type TaskMenuAction } from "./task-menu";
 
 const statuses: { value: TaskStatus; label: string }[] = [
   { value: "todo", label: "To do" },
@@ -9,11 +11,17 @@ const statuses: { value: TaskStatus; label: string }[] = [
   { value: "done", label: "Done" },
 ];
 
-type TaskChange = Partial<Pick<Task, "title" | "status">>;
+export type TaskContextActions = {
+  todayKey: string;
+  onMoveToWeek: (taskId: string) => void;
+  onDismissForToday?: (taskId: string) => void;
+  onShowInToday?: (taskId: string) => void;
+};
 
 type TaskActions = {
   onUpdate: (taskId: string, change: TaskChange) => void;
   onDelete: (taskId: string) => void;
+  context?: TaskContextActions;
 };
 
 function TaskItem({
@@ -21,11 +29,26 @@ function TaskItem({
   sourceLabel,
   onUpdate,
   onDelete,
+  context,
 }: TaskActions & { task: Task; sourceLabel?: string }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [draft, setDraft] = useState(task.title);
   const editId = useId();
+  const deleteLabel = task.period === "week" ? "Delete weekly task" : "Delete task";
+  const menuActions: TaskMenuAction[] = [
+    { label: "Edit", onSelect: () => { setDraft(task.title); setIsEditing(true); } },
+  ];
+  if (context && task.period === "day" && task.periodKey === context.todayKey) {
+    menuActions.push({ label: "Move to this week", onSelect: () => context.onMoveToWeek(task.id) });
+  }
+  if (context && task.period === "week") {
+    if (context.onDismissForToday) menuActions.push({ label: "Dismiss for today", onSelect: () => context.onDismissForToday?.(task.id) });
+    if (context.onShowInToday && task.dismissedOn === context.todayKey) {
+      menuActions.push({ label: "Show in Today", onSelect: () => context.onShowInToday?.(task.id) });
+    }
+  }
+  menuActions.push({ label: deleteLabel, danger: true, onSelect: () => setIsConfirmingDelete(true) });
 
   function saveEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -82,15 +105,11 @@ function TaskItem({
       <div className="task-actions">
         {isConfirmingDelete ? (
           <>
-            <span className="delete-question">Delete?</span>
-            <button className="icon-action delete-confirm" type="button" onClick={() => onDelete(task.id)}>Confirm</button>
+            <button autoFocus className="icon-action delete-confirm" type="button" aria-label={`${deleteLabel}: ${task.title}`} onClick={() => onDelete(task.id)}>{deleteLabel}?</button>
             <button className="icon-action" type="button" onClick={() => setIsConfirmingDelete(false)}>Cancel</button>
           </>
         ) : (
-          <>
-            <button className="icon-action edit-action" type="button" onClick={() => { setDraft(task.title); setIsEditing(true); }}>Edit</button>
-            <button className="icon-action delete-action" type="button" aria-label={`Delete ${task.title}`} onClick={() => setIsConfirmingDelete(true)}>×</button>
-          </>
+          <TaskMenu title={task.title} actions={menuActions} />
         )}
       </div>
     </div>
@@ -102,6 +121,7 @@ export function TaskBoard({
   sourceLabel,
   onUpdate,
   onDelete,
+  context,
 }: TaskActions & {
   tasks: Task[];
   sourceLabel?: (task: Task) => string;
@@ -146,6 +166,7 @@ export function TaskBoard({
                         sourceLabel={sourceLabel?.(task)}
                         onUpdate={(taskId, change) => onUpdate(taskId, change)}
                         onDelete={onDelete}
+                        context={context}
                       />
                     </article>
                   </li>
@@ -172,6 +193,7 @@ export function TaskCollection({
   onAddTask,
   onUpdateTask,
   onDeleteTask,
+  context,
 }: {
   period: TaskPeriod;
   periodKey: string;
@@ -183,9 +205,11 @@ export function TaskCollection({
   onAddTask: (title: string, period: TaskPeriod, periodKey: string) => void;
   onUpdateTask: (taskId: string, change: TaskChange) => void;
   onDeleteTask: (taskId: string) => void;
+  context?: TaskContextActions;
 }) {
   const [newTask, setNewTask] = useState("");
   const titleId = useId();
+  const sourceLabel = (task: Task) => period === "day" && task.period === "week" ? "From this week’s list" : "";
 
   function submitTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -232,12 +256,12 @@ export function TaskCollection({
         <ul className="task-list">
           {tasks.map((task) => (
             <li key={task.id}>
-              <TaskItem task={task} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
+              <TaskItem task={task} sourceLabel={sourceLabel(task)} context={context} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
             </li>
           ))}
         </ul>
       ) : (
-        <TaskBoard tasks={tasks} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
+        <TaskBoard tasks={tasks} sourceLabel={sourceLabel} context={context} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
       )}
       <div className="panel-footnote">
         <span>{tasks.length} {tasks.length === 1 ? "task" : "tasks"}</span>

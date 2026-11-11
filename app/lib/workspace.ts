@@ -12,6 +12,8 @@ export type Task = {
   createdAt: string;
   updatedAt: string;
   carriedFrom?: string;
+  dismissedOn?: string;
+  completedAt?: string;
 };
 
 export type ProjectStatus = "planned" | "active" | "paused" | "complete";
@@ -68,7 +70,9 @@ function isTask(value: unknown): value is Task {
     (value.status === "todo" || value.status === "doing" || value.status === "done") &&
     typeof value.createdAt === "string" &&
     typeof value.updatedAt === "string" &&
-    (value.carriedFrom === undefined || typeof value.carriedFrom === "string")
+    (value.carriedFrom === undefined || typeof value.carriedFrom === "string") &&
+    (value.dismissedOn === undefined || (typeof value.dismissedOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.dismissedOn))) &&
+    (value.completedAt === undefined || (typeof value.completedAt === "string" && Number.isFinite(Date.parse(value.completedAt))))
   );
 }
 
