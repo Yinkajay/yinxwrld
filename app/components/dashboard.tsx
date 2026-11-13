@@ -113,7 +113,11 @@ function LoadingPanels({ showWeek }: { showWeek: boolean }) {
   );
 }
 
-function HistoryTaskRow({ task, onDelete }: { task: Task; onDelete: (taskId: string) => void }) {
+function HistoryTaskRow({ task, onUpdate, onDelete }: {
+  task: Task;
+  onUpdate: (taskId: string, change: Pick<Task, "status">) => void;
+  onDelete: (taskId: string) => void;
+}) {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const statusLabel = task.status === "todo" ? "To do" : task.status === "doing" ? "Doing" : "Done";
 
@@ -121,7 +125,16 @@ function HistoryTaskRow({ task, onDelete }: { task: Task; onDelete: (taskId: str
     <li className={task.status === "done" ? "is-done" : ""}>
       <span className={`history-status status-${task.status}`} aria-label={statusLabel} />
       <span className="history-task-title">{task.title}</span>
-      <span className={`history-status-label status-label-${task.status}`}>{statusLabel}</span>
+      <select
+        className={`status-select history-status-label status-label-${task.status}`}
+        aria-label={`Status for ${task.title} in history`}
+        value={task.status}
+        onChange={(event) => onUpdate(task.id, { status: event.target.value as Task["status"] })}
+      >
+        <option value="todo">To do</option>
+        <option value="doing">Doing</option>
+        <option value="done">Done</option>
+      </select>
       <div className="history-actions">
         {isConfirmingDelete ? (
           <>
@@ -432,7 +445,7 @@ export default function Dashboard() {
             <div>
               <p className="panel-kicker">YOUR PAST LISTS</p>
               <h2 id="history-heading">Look back</h2>
-              <p>Previous lists stay here, just as you left them.</p>
+              <p>Review past lists and update their task statuses.</p>
             </div>
             <div className="history-controls">
               <button className="button button-quiet" type="button" onClick={() => {
@@ -458,7 +471,7 @@ export default function Dashboard() {
           {historyTasks.length ? (
             <ul className="history-list">
               {historyTasks.map((task) => (
-                <HistoryTaskRow key={task.id} task={task} onDelete={deleteTask} />
+                <HistoryTaskRow key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
               ))}
             </ul>
           ) : (

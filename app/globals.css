@@ -1584,12 +1584,19 @@ button:disabled {
   text-decoration: line-through;
 }
 
-.history-status-label {
-  padding: 2px 8px;
+.history-list .history-status-label {
+  min-height: 32px;
+  flex: 0 0 auto;
+  margin-left: 0;
+  padding: 4px 24px 4px 8px;
   border-radius: 6px;
-  background: var(--stage-fill);
+  background-color: var(--stage-fill);
   color: var(--stage-ink);
   font-size: 14px;
+}
+
+.history-list .history-status-label:hover {
+  border-color: var(--stage-ink);
 }
 
 .history-empty {
