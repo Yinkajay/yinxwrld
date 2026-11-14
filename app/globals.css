@@ -798,25 +798,27 @@ button:disabled {
 }
 
 .recurring-panel {
-  margin-top: 24px;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: rgb(255 254 250 / 90%);
+  margin-top: 0;
+  padding: 12px 0 0;
+  border-top: 1px solid #efeee8;
   color: var(--foreground);
   text-shadow: none;
 }
 
+.task-panel .recurring-panel {
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: 0;
+}
+
 .recurring-panel summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
-}
-
-.dashboard-page.is-day-only .recurring-panel {
-  max-width: 760px;
-  margin-right: auto;
-  margin-left: auto;
 }
 
 .recurring-panel summary span {

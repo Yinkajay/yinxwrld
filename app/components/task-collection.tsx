@@ -8,6 +8,7 @@ import TaskMenu, { type TaskMenuAction } from "./task-menu";
 import { CategoryBadge, CategoryFilter, CategoryInput } from "./category-controls";
 import { filterByCategory } from "@/app/lib/workspace";
 import { useSounds } from "@/app/hooks/use-sounds";
+import { RecurringTasksPanel } from "./repeat-controls";
 
 const statuses: { value: TaskStatus; label: string }[] = [
   { value: "todo", label: "To do" },
@@ -290,6 +291,8 @@ export function TaskCollection({
   categories,
   selectedCategory,
   onCategoryChange,
+  recurringTasks = [],
+  onStopRepeating,
 }: {
   period: TaskPeriod;
   periodKey: string;
@@ -305,6 +308,8 @@ export function TaskCollection({
   categories: string[];
   selectedCategory: string;
   onCategoryChange: (category: string) => void;
+  recurringTasks?: RecurringTask[];
+  onStopRepeating?: (seriesId: string) => void;
 }) {
   const [newTask, setNewTask] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState("");
@@ -395,6 +400,7 @@ export function TaskCollection({
         <span>{visibleTasks.length} {visibleTasks.length === 1 ? "task" : "tasks"}</span>
         <span>{visibleTasks.filter((task) => task.status === "done").length} done</span>
       </div>
+      {period === "day" && onStopRepeating && <RecurringTasksPanel tasks={recurringTasks} onStop={onStopRepeating} />}
     </section>
   );
 }

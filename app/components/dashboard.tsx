@@ -486,6 +486,7 @@ export default function Dashboard() {
                 <span>Add tasks to either list and they will meet here.</span>
               </div>
             )}
+            <RecurringTasksPanel tasks={data.recurringTasks ?? []} onStop={stopRepeating} />
           </section>
         ) : (
           <div className={`planner-grid${showWeek ? " is-two-periods" : " is-one-period"}`}>
@@ -504,6 +505,8 @@ export default function Dashboard() {
               onUpdateTask={updateTask}
               onDeleteTask={deleteTask}
               context={{ ...taskContext, onDismissForToday: (taskId) => setDismissed(taskId, true) }}
+              recurringTasks={data.recurringTasks ?? []}
+              onStopRepeating={stopRepeating}
             />
             {showWeek && (
               <TaskCollection
@@ -526,8 +529,6 @@ export default function Dashboard() {
           </div>
         )}
       </section>
-
-      {isLoaded && isConnected && <RecurringTasksPanel tasks={data.recurringTasks ?? []} onStop={stopRepeating} />}
 
       {isLoaded && isConnected && (
         <LookaheadPanel
