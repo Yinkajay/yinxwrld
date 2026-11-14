@@ -53,6 +53,7 @@ function ProjectCard({
         <select
           id={`project-status-${project.id}`}
           className="project-status-select"
+          data-sound-state={project.status === "complete" ? "complete" : project.status}
           value={project.status}
           onChange={(event) => onUpdate(project.id, { status: event.target.value as ProjectStatus })}
         >
@@ -61,7 +62,7 @@ function ProjectCard({
       </div>
 
       {editing ? (
-        <form className="project-edit-form" onSubmit={saveProject}>
+        <form className="project-edit-form" data-submit-sound="save" onSubmit={saveProject}>
           <label>
             <span>Project name</span>
             <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} required />
@@ -72,7 +73,7 @@ function ProjectCard({
           </label>
           <CategoryInput id={`project-${project.id}-category`} value={category} categories={categories} onChange={setCategory} />
           <div className="card-action-row">
-            <button className="button button-primary button-small" type="submit" disabled={!title.trim()}>Save project</button>
+            <button className="button button-primary button-small" type="submit" data-sound="save" disabled={!title.trim()}>Save project</button>
             <button className="button button-quiet button-small" type="button" onClick={() => { setTitle(project.title); setNotes(project.notes); setCategory(project.category ?? ""); setEditing(false); }}>Cancel</button>
           </div>
         </form>
@@ -88,7 +89,7 @@ function ProjectCard({
             {confirmingDelete ? (
               <span className="inline-confirm">
                 <span>Delete?</span>
-                <button className="text-button danger-text" type="button" onClick={() => onDelete(project.id)}>Confirm</button>
+                <button className="text-button danger-text" type="button" data-sound="delete" onClick={() => onDelete(project.id)}>Confirm</button>
                 <button className="text-button muted-button" type="button" onClick={() => setConfirmingDelete(false)}>Cancel</button>
               </span>
             ) : (
@@ -127,7 +128,7 @@ function IdeaCard({
   return (
     <article className="idea-card">
       {editing ? (
-        <form className="idea-edit-form" onSubmit={saveIdea}>
+        <form className="idea-edit-form" data-submit-sound="save" onSubmit={saveIdea}>
           <label>
             <span>Idea</span>
             <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} required />
@@ -137,7 +138,7 @@ function IdeaCard({
             <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} maxLength={1000} />
           </label>
           <div className="card-action-row">
-            <button className="button button-primary button-small" type="submit" disabled={!title.trim()}>Save idea</button>
+            <button className="button button-primary button-small" type="submit" data-sound="save" disabled={!title.trim()}>Save idea</button>
             <button className="button button-quiet button-small" type="button" onClick={() => { setTitle(idea.title); setNotes(idea.notes); setEditing(false); }}>Cancel</button>
           </div>
         </form>
@@ -147,12 +148,12 @@ function IdeaCard({
           <h3>{idea.title}</h3>
           {idea.notes && <p>{idea.notes}</p>}
           <div className="idea-card-footer">
-            <button className="button button-soft button-small" type="button" onClick={() => onPromote(idea)}>Make a project <span aria-hidden="true">↗</span></button>
+            <button className="button button-soft button-small" type="button" data-sound="add" onClick={() => onPromote(idea)}>Make a project <span aria-hidden="true">↗</span></button>
             <div className="idea-secondary-actions">
               <button className="text-button" type="button" onClick={() => { setTitle(idea.title); setNotes(idea.notes); setEditing(true); }}>Edit</button>
               {confirmingDelete ? (
                 <span className="inline-confirm">
-                  <button className="text-button danger-text" type="button" onClick={() => onDelete(idea.id)}>Confirm</button>
+                  <button className="text-button danger-text" type="button" data-sound="delete" onClick={() => onDelete(idea.id)}>Confirm</button>
                   <button className="text-button muted-button" type="button" onClick={() => setConfirmingDelete(false)}>Cancel</button>
                 </span>
               ) : (
@@ -304,12 +305,12 @@ export default function CreativeWorkspace() {
           </header>
 
           {showProjectForm && (
-            <form className="entry-form project-create-form" onSubmit={addProject}>
+            <form className="entry-form project-create-form" data-submit-sound="add" onSubmit={addProject}>
               <div className="form-title-row"><h3>Start a project</h3><button className="icon-action" type="button" aria-label="Close project form" onClick={() => setShowProjectForm(false)}>×</button></div>
               <label><span>Project name</span><input autoFocus value={projectTitle} onChange={(event) => setProjectTitle(event.target.value)} maxLength={120} placeholder="What are you making?" required /></label>
               <label><span>A note to yourself</span><textarea value={projectNotes} onChange={(event) => setProjectNotes(event.target.value)} rows={3} maxLength={1000} placeholder="A little context or a first step" /></label>
               <CategoryInput id="new-project-category" value={projectCategory} categories={categories} onChange={setProjectCategory} />
-              <button className="button button-primary" type="submit" disabled={!isLoaded || !projectTitle.trim()}>Create project</button>
+              <button className="button button-primary" type="submit" data-sound="add" disabled={!isLoaded || !projectTitle.trim()}>Create project</button>
             </form>
           )}
 
@@ -345,10 +346,10 @@ export default function CreativeWorkspace() {
             <span className="task-total-pill">{data.ideas.length} saved</span>
           </header>
 
-          <form className="entry-form idea-create-form" onSubmit={addIdea}>
+          <form className="entry-form idea-create-form" data-submit-sound="add" onSubmit={addIdea}>
             <label><span>Catch an idea</span><input value={ideaTitle} onChange={(event) => setIdeaTitle(event.target.value)} maxLength={120} placeholder="A thought, a question, a maybe…" required /></label>
             <label><span>A few more details <span className="optional-label">optional</span></span><textarea value={ideaNotes} onChange={(event) => setIdeaNotes(event.target.value)} rows={3} maxLength={1000} placeholder="Keep the spark alive with a little context" /></label>
-            <button className="button button-soft" type="submit" disabled={!isLoaded || !ideaTitle.trim()}>Save idea <span aria-hidden="true">↗</span></button>
+            <button className="button button-soft" type="submit" data-sound="add" disabled={!isLoaded || !ideaTitle.trim()}>Save idea <span aria-hidden="true">↗</span></button>
           </form>
 
           {!isLoaded ? null : data.ideas.length ? (

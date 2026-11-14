@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useWorkspace } from "@/app/hooks/use-workspace";
+import { useSounds } from "@/app/hooks/use-sounds";
 import { CategoryInput } from "./category-controls";
 import StorageNotice from "./storage-notice";
 import { RepeatInput } from "./repeat-controls";
@@ -68,7 +69,7 @@ function CategoryRow({ name }: { name: string }) {
           <button className="text-button danger-text" type="button" aria-label={`Remove ${name}`} onClick={() => { setReplacement(""); setError(null); setMode("remove"); }}>Remove</button>
         </div>}
       </div>
-      {mode !== "view" && <form className="settings-editor" onSubmit={save}>
+      {mode !== "view" && <form className="settings-editor" data-submit-sound={mode === "remove" ? "delete" : "save"} onSubmit={save}>
         {mode === "rename" ? <label className="settings-field"><span>Category name</span><input autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={MAX_CATEGORY_LENGTH} required /></label> : <>
           <p>Remove {name}? Your tasks and projects will stay. Choose where to move the {count} linked {count === 1 ? "item" : "items"}.</p>
           <SelectSetting id={`replace-category-${encodeURIComponent(name)}`} label="Move items to" value={replacement} onChange={setReplacement}>
@@ -78,7 +79,7 @@ function CategoryRow({ name }: { name: string }) {
         </>}
         {error && <p className="settings-error" role="alert">{error}</p>}
         <div className="settings-editor-actions">
-          <button className={`button button-small ${mode === "remove" ? "button-quiet danger-text" : "button-primary"}`} disabled={busy} type="submit">{busy ? "Saving…" : mode === "rename" ? "Save category" : "Remove category"}</button>
+          <button className={`button button-small ${mode === "remove" ? "button-quiet danger-text" : "button-primary"}`} data-sound={mode === "remove" ? "delete" : "save"} disabled={busy} type="submit">{busy ? "Saving…" : mode === "rename" ? "Save category" : "Remove category"}</button>
           <button className="button button-quiet button-small" disabled={busy} type="button" onClick={() => setMode("view")}>Cancel</button>
         </div>
       </form>}
@@ -104,9 +105,9 @@ function CategoryManager() {
   }
   const categories = getWorkspaceCategories(data);
   return <>
-    <form className="settings-add-form" onSubmit={add}>
+    <form className="settings-add-form" data-submit-sound="add" onSubmit={add}>
       <label className="settings-field"><span>New category</span><input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Name your category" maxLength={MAX_CATEGORY_LENGTH} required /></label>
-      <button className="button button-primary button-small" type="submit" disabled={busy || !draft.trim()}>{busy ? "Saving…" : "Add category"}</button>
+      <button className="button button-primary button-small" type="submit" data-sound="add" disabled={busy || !draft.trim()}>{busy ? "Saving…" : "Add category"}</button>
     </form>
     {error && <p className="settings-error" role="alert">{error}</p>}
     {categories.length ? <ul className="settings-items">{categories.map((name) => <CategoryRow key={name} name={name} />)}</ul> : <p className="settings-description">No categories yet. Add one here or while assigning a task or project.</p>}
@@ -135,7 +136,7 @@ function ScheduleEditor({ schedule, onClose }: { schedule: RecurringTask; onClos
     } catch (cause) { setError(errorMessage(cause)); }
     finally { setBusy(false); }
   }
-  return <form className="settings-editor" onSubmit={save}>
+  return <form className="settings-editor" data-submit-sound="save" onSubmit={save}>
     <label className="settings-field"><span>Task name</span><input autoFocus value={title} onChange={(event) => setTitle(event.target.value)} maxLength={180} required /></label>
     <CategoryInput id={`schedule-${schedule.id}-category`} categories={getWorkspaceCategories(data)} value={category} onChange={setCategory} />
     <RepeatInput id={`schedule-${schedule.id}-repeat`} value={repeat} period={schedule.period} onChange={setRepeat} allowNone={false} />
@@ -145,7 +146,7 @@ function ScheduleEditor({ schedule, onClose }: { schedule: RecurringTask; onClos
     <p>Changes apply to future repeats. Existing tasks keep their details.</p>
     {error && <p className="settings-error" role="alert">{error}</p>}
     <div className="settings-editor-actions">
-      <button className="button button-primary button-small" type="submit" disabled={busy || !title.trim()}>{busy ? "Saving…" : "Save schedule"}</button>
+      <button className="button button-primary button-small" type="submit" data-sound="save" disabled={busy || !title.trim()}>{busy ? "Saving…" : "Save schedule"}</button>
       <button className="button button-quiet button-small" type="button" disabled={busy} onClick={onClose}>Cancel</button>
     </div>
   </form>;
@@ -175,6 +176,7 @@ function ScheduleRow({ schedule }: { schedule: RecurringTask }) {
 
 export default function SettingsWorkspace() {
   const { data, isLoaded, isConnected, isSaving, hasSaved, saveError, storageMessage, retryConnection, updateWorkspace } = useWorkspace();
+  const { preferences: soundPreferences, setEnabled: setSoundsEnabled, setVolume: setSoundsVolume, playSound } = useSounds();
   const settings = getWorkspaceSettings(data);
   function change(patch: SettingsPatch) { void updateWorkspace((current) => changeWorkspaceSettings(current, patch)); }
   return <div className="page-content settings-page">
@@ -182,7 +184,8 @@ export default function SettingsWorkspace() {
     <div className="settings-save-status" role="status" aria-live="polite">{isSaving ? "Saving…" : saveError ? "Changes were not saved" : hasSaved ? "Saved" : "Changes save automatically"}</div>
     {storageMessage && <StorageNotice message={storageMessage} onRetry={retryConnection} />}
     {saveError && <p className="settings-error settings-save-error" role="alert">{saveError} The last saved values have been restored.</p>}
-    {!isLoaded ? <div className="settings-loading" aria-busy="true" aria-label="Loading settings">{[0, 1, 2, 3].map((id) => <section className="settings-section" key={id}><div className="skeleton skeleton-heading" /><div className="skeleton skeleton-line" /><div className="skeleton skeleton-line short" /></section>)}</div> : <fieldset key="workspace-controls" className="settings-controls" disabled={!isConnected} aria-label="Workspace settings">
+    {!isLoaded ? <div className="settings-loading" aria-busy="true" aria-label="Loading settings">{[0, 1, 2, 3].map((id) => <section className="settings-section" key={id}><div className="skeleton skeleton-heading" /><div className="skeleton skeleton-line" /><div className="skeleton skeleton-line short" /></section>)}</div> : <>
+      <fieldset key="appearance-controls" className="settings-controls" disabled={!isConnected} aria-label="Appearance settings">
       <section className="settings-section" aria-labelledby="appearance-heading">
         <h2 id="appearance-heading">Appearance</h2><p className="settings-description">Choose a scene for each part of your world.</p>
         <div className="background-settings">
@@ -196,6 +199,27 @@ export default function SettingsWorkspace() {
         </div>
         <label className="settings-toggle"><input type="checkbox" checked={settings.showDailyFooter} onChange={(event) => change({ showDailyFooter: event.target.checked })} /><span>Show the daily quote or prompt</span></label>
       </section>
+      </fieldset>
+      <section className="settings-section sound-settings" aria-labelledby="sounds-heading">
+        <h2 id="sounds-heading">Sounds</h2>
+        <p className="settings-description">Crisp little cues for taps, task changes, and Kanban cards. These settings stay on this device.</p>
+        <div className="sound-preferences">
+          <label className="settings-toggle sound-toggle">
+            <input type="checkbox" checked={soundPreferences.enabled} onChange={(event) => setSoundsEnabled(event.target.checked)} />
+            <span>Play interface sounds</span>
+          </label>
+          <label className="sound-volume" htmlFor="sound-volume">
+            <span>Volume</span>
+            <input id="sound-volume" type="range" min="0" max="100" step="5" value={soundPreferences.volume}
+              aria-valuetext={`${soundPreferences.volume} percent`} disabled={!soundPreferences.enabled}
+              onChange={(event) => setSoundsVolume(Number(event.target.value))} />
+            <output htmlFor="sound-volume">{soundPreferences.volume}%</output>
+          </label>
+          <button className="button button-soft button-small sound-preview" type="button" data-sound="none"
+            disabled={!soundPreferences.enabled} onClick={() => playSound("tap")}>Preview sound</button>
+        </div>
+      </section>
+      <fieldset key="workspace-controls" className="settings-controls" disabled={!isConnected} aria-label="Planner and organization settings">
       <section className="settings-section" aria-labelledby="planner-settings-heading">
         <h2 id="planner-settings-heading">Planner</h2><p className="settings-description">Your last view follows you between devices. You can change it here or on Home.</p>
         <div className="planner-preferences">
@@ -212,6 +236,7 @@ export default function SettingsWorkspace() {
         <h2 id="recurring-settings-heading">Repeating tasks</h2><p className="settings-description">Edit future repeats or take a break. Pausing keeps your current tasks and history.</p>
         {data.recurringTasks?.length ? <ul className="settings-items">{data.recurringTasks.map((schedule) => <ScheduleRow key={schedule.id} schedule={schedule} />)}</ul> : <p className="settings-description">No repeating schedules yet. <Link href="/">Open your planner</Link> to create one.</p>}
       </section>
-    </fieldset>}
+      </fieldset>
+    </>}
   </div>;
 }

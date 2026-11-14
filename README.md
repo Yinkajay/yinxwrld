@@ -24,6 +24,8 @@ Settings also manages every task/project category, including the original four. 
 
 The Repeating tasks section shows active and paused schedules. Edit future task names, categories, repeat frequency, and the weekday for weekly tasks in Today. Existing occurrences retain their details. Resuming preserves the original weekday and deletion exclusions, creates only a missing occurrence that is currently due, and does not backfill missed dates.
 
+The Sounds section controls crisp interface cues, preview, and volume. These audio preferences are saved only in this browser and do not sync across devices. Regenerate the original short WAV files with `npm run generate:sounds`.
+
 Run `npm run test:settings` for category, preference, compatibility, schedule, and concurrent-save checks. A shared workspace provider owns the polling and save queue for every page, the background, and the footer.
 
 ## Local development

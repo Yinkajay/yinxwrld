@@ -127,6 +127,7 @@ function HistoryTaskRow({ task, onUpdate, onDelete }: {
       <span className="history-task-title">{task.title}</span>
       <select
         className={`status-select history-status-label status-label-${task.status}`}
+        data-sound-state={task.status}
         aria-label={`Status for ${task.title} in history`}
         value={task.status}
         onChange={(event) => onUpdate(task.id, { status: event.target.value as Task["status"] })}
@@ -139,7 +140,7 @@ function HistoryTaskRow({ task, onUpdate, onDelete }: {
         {isConfirmingDelete ? (
           <>
             <span className="delete-question">Delete?</span>
-            <button className="icon-action delete-confirm" type="button" onClick={() => onDelete(task.id)}>Delete</button>
+            <button className="icon-action delete-confirm" type="button" data-sound="delete" onClick={() => onDelete(task.id)}>Delete</button>
             <button className="icon-action" type="button" onClick={() => setIsConfirmingDelete(false)}>Cancel</button>
           </>
         ) : (

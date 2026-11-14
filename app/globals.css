@@ -1663,6 +1663,12 @@ button:disabled {
   text-shadow: none;
 }
 
+.sound-settings {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
 .settings-section h2 {
   margin: 0;
   font-size: 20px;
@@ -1744,6 +1750,54 @@ button:disabled {
 .settings-toggle input {
   flex: 0 0 auto;
   accent-color: var(--accent);
+}
+
+.sound-preferences {
+  display: grid;
+  max-width: 520px;
+  gap: 16px;
+}
+
+.settings-toggle.sound-toggle {
+  margin: 0;
+}
+
+.sound-volume {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 16px;
+  color: var(--foreground);
+  font-size: 14px;
+}
+
+.settings-section .sound-preferences .sound-volume input[type="range"] {
+  grid-column: 1;
+  width: 100%;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.sound-volume output {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 40px;
+  color: var(--muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sound-preview {
+  justify-self: start;
+}
+
+.sound-preview:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .settings-toggle {

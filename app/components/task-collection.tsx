@@ -7,6 +7,7 @@ import { RepeatInput } from "./repeat-controls";
 import TaskMenu, { type TaskMenuAction } from "./task-menu";
 import { CategoryBadge, CategoryFilter, CategoryInput } from "./category-controls";
 import { filterByCategory } from "@/app/lib/workspace";
+import { useSounds } from "@/app/hooks/use-sounds";
 
 const statuses: { value: TaskStatus; label: string }[] = [
   { value: "todo", label: "To do" },
@@ -73,6 +74,7 @@ function TaskItem({
       <button
         className="task-check"
         type="button"
+        data-sound={task.status === "done" ? "reopen" : "complete"}
         aria-label={task.status === "done" ? `Mark ${task.title} as to do` : `Mark ${task.title} as done`}
         aria-pressed={task.status === "done"}
         onClick={() => onUpdate(task.id, { status: task.status === "done" ? "todo" : "done" })}
@@ -82,7 +84,7 @@ function TaskItem({
 
       <div className="task-item-body">
         {isEditing ? (
-          <form className="inline-edit-form" onSubmit={saveEdit}>
+          <form className="inline-edit-form" data-submit-sound="save" onSubmit={saveEdit}>
             <label className="sr-only" htmlFor={editId}>Edit task</label>
             <input
               autoFocus
@@ -104,6 +106,7 @@ function TaskItem({
                 id={`${editId}-status`}
                 aria-labelledby={`${editId}-status-label`}
                 className="status-select"
+                data-sound-state={task.status}
                 value={task.status}
                 onChange={(event) => onUpdate(task.id, { status: event.target.value as TaskStatus })}
               >
@@ -116,7 +119,7 @@ function TaskItem({
               {series && draftRepeat === "none" && <span className="repeat-hint">Stops future repeats. This task stays.</span>}
             </div>
             <div className="task-edit-actions">
-              <button className="text-button" type="submit" disabled={!draft.trim()}>Save</button>
+              <button className="text-button" type="submit" data-sound="save" disabled={!draft.trim()}>Save</button>
               <button className="text-button muted-button" type="button" onClick={() => { setDraft(task.title); setDraftCategory(task.category ?? ""); setIsEditing(false); }}>Cancel</button>
             </div>
           </form>
@@ -136,6 +139,7 @@ function TaskItem({
           <select
             id={`${editId}-status`}
             className="status-select"
+            data-sound-state={task.status}
             value={task.status}
             onChange={(event) => onUpdate(task.id, { status: event.target.value as TaskStatus })}
           >
@@ -145,7 +149,7 @@ function TaskItem({
           <div className="task-actions">
             {isConfirmingDelete ? (
               <>
-                <button autoFocus className="icon-action delete-confirm" type="button" aria-label={`${deleteLabel}: ${task.title}`} onClick={() => onDelete(task.id)}>{deleteLabel}?</button>
+                <button autoFocus className="icon-action delete-confirm" type="button" data-sound="delete" aria-label={`${deleteLabel}: ${task.title}`} onClick={() => onDelete(task.id)}>{deleteLabel}?</button>
                 <button className="icon-action" type="button" onClick={() => setIsConfirmingDelete(false)}>Cancel</button>
               </>
             ) : (
@@ -170,10 +174,15 @@ export function TaskBoard({
   sourceLabel?: (task: Task) => string;
   categories: string[];
 }) {
+  const { playSound } = useSounds();
+
   function dropTask(event: DragEvent<HTMLDivElement>, status: TaskStatus) {
     event.preventDefault();
     const taskId = event.dataTransfer.getData("text/plain");
-    if (taskId && tasks.some((task) => task.id === taskId)) onUpdate(taskId, { status });
+    if (taskId && tasks.some((task) => task.id === taskId)) {
+      playSound("drop");
+      onUpdate(taskId, { status });
+    }
   }
 
   return (
@@ -203,6 +212,7 @@ export function TaskBoard({
                       onDragStart={(event) => {
                         event.dataTransfer.setData("text/plain", task.id);
                         event.dataTransfer.effectAllowed = "move";
+                        playSound("drag-pickup");
                       }}
                     >
                       <TaskItem
@@ -297,7 +307,7 @@ export function TaskCollection({
         </div>
       </header>
 
-      <form className="add-task-form" onSubmit={submitTask}>
+      <form className="add-task-form" data-submit-sound="add" onSubmit={submitTask}>
         <label className="sr-only" htmlFor={`${titleId}-new`}>Add a task to {title}</label>
         <span className="add-plus" aria-hidden="true">+</span>
         <input
@@ -317,7 +327,7 @@ export function TaskCollection({
           />
           <RepeatInput id={`${titleId}-new-repeat`} value={newTaskRepeat} period={period} onChange={setNewTaskRepeat} />
         </div>
-        <button type="submit" disabled={!newTask.trim()}>Add</button>
+        <button type="submit" data-sound="add" disabled={!newTask.trim()}>Add</button>
       </form>
 
       {visibleTasks.length === 0 && tasks.length === 0 ? (

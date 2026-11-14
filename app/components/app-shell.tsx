@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DailyFooter from "@/app/components/daily-footer";
 import { useWorkspace } from "@/app/hooks/use-workspace";
+import { SOUND_NAMES, useSounds, type SoundName } from "@/app/hooks/use-sounds";
 import { getWorkspaceSettings } from "@/app/lib/workspace-settings";
 
 const navigation = [
@@ -18,6 +19,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [currentHash, setCurrentHash] = useState("");
   const isCreativePage = pathname.startsWith("/creative");
   const { data } = useWorkspace();
+  const { playSound } = useSounds();
+  const lastSoundAt = useRef(new WeakMap<HTMLElement, number>());
   const settings = getWorkspaceSettings(data);
   const scene = settings.backgrounds[pathname.startsWith("/settings") ? "settings" : isCreativePage ? "creative" : "home"];
 
@@ -32,8 +35,69 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname]);
 
+  function playControlSound(control: HTMLElement, rememberClick = true) {
+    if (control.getAttribute("aria-disabled") === "true" || control.matches(":disabled")) return;
+    const selected = control.dataset.sound;
+    if (selected === "none") return;
+    const sound = selected && SOUND_NAMES.includes(selected as SoundName) ? selected as SoundName : "tap";
+    playSound(sound);
+    if (rememberClick) lastSoundAt.current.set(control, performance.now());
+  }
+
+  function handleClickCapture(event: React.MouseEvent<HTMLDivElement>) {
+    if (!(event.target instanceof Element)) return;
+    const control = event.target.closest<HTMLElement>("button, a, input:not([type='hidden']), select, textarea, summary, [role='button'], [role='menuitem'], [role='tab'], [role='checkbox'], [role='radio']");
+    if (control instanceof HTMLTextAreaElement || (control instanceof HTMLInputElement &&
+      ["text", "search", "email", "url", "tel", "password", "number"].includes(control.type))) return;
+    // Status selects get their action-specific cue from the resulting value
+    // change, so opening the menu does not layer a generic tap on top of it.
+    if (control instanceof HTMLSelectElement && control.hasAttribute("data-sound-state")) return;
+    if (control) playControlSound(control);
+  }
+
+  function handleChangeCapture(event: React.ChangeEvent<HTMLDivElement>) {
+    const control = event.target;
+    if (!(control instanceof HTMLSelectElement)) return;
+    const previous = control.dataset.soundState;
+    if (!previous) {
+      const lastClick = lastSoundAt.current.get(control) ?? -Infinity;
+      if (performance.now() - lastClick > 80) playControlSound(control, false);
+      return;
+    }
+    const next = control.value;
+    const sound: SoundName = !previous ? "tap"
+      : next === "done" || next === "complete" ? "complete"
+        : previous === "done" || previous === "complete" ? "reopen" : "tap";
+    playSound(sound);
+    control.dataset.soundState = next;
+  }
+
+  function handleKeyDownCapture(event: React.KeyboardEvent<HTMLDivElement>) {
+    const control = event.target;
+    if (control instanceof HTMLInputElement && control.type === "range" &&
+      ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
+      playControlSound(control, false);
+    }
+  }
+
+  function handleSubmitCapture(event: React.FormEvent<HTMLDivElement>) {
+    const nativeEvent = event.nativeEvent as SubmitEvent;
+    const submitter = nativeEvent.submitter instanceof HTMLElement ? nativeEvent.submitter : null;
+    const form = event.target;
+    if (submitter) {
+      const lastClick = lastSoundAt.current.get(submitter) ?? -Infinity;
+      if (performance.now() - lastClick > 80) playControlSound(submitter, false);
+    }
+    else if (form instanceof HTMLFormElement) {
+      const selected = form.dataset.submitSound;
+      const sound = selected && SOUND_NAMES.includes(selected as SoundName) ? selected as SoundName : "add";
+      playSound(sound);
+    }
+  }
+
   return (
-    <div className={`app-frame scene-${scene}${settings.showDailyFooter ? "" : " without-daily-footer"}`}>
+    <div className={`app-frame scene-${scene}${settings.showDailyFooter ? "" : " without-daily-footer"}`}
+      onClickCapture={handleClickCapture} onChangeCapture={handleChangeCapture} onKeyDownCapture={handleKeyDownCapture} onSubmitCapture={handleSubmitCapture}>
       <div className="scene-background" aria-hidden="true" />
       <header className="site-header">
         <div className="site-header-inner">

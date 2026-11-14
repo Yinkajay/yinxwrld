@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:planner": "node --test tests/planner.test.cjs",
-    "test:settings": "node --test tests/settings.test.cjs"
+    "test:settings": "node --test tests/settings.test.cjs",
+    "generate:sounds": "python3 scripts/generate-ui-sounds.py"
   },
   "dependencies": {
     "mongodb": "^7.8.0",
