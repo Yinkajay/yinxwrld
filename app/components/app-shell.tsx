@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import DailyFooter from "@/app/components/daily-footer";
+import { useWorkspace } from "@/app/hooks/use-workspace";
+import { getWorkspaceSettings } from "@/app/lib/workspace-settings";
 
 const navigation = [
   { href: "/", label: "Home" },
@@ -15,6 +17,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [currentHash, setCurrentHash] = useState("");
   const isCreativePage = pathname.startsWith("/creative");
+  const { data } = useWorkspace();
+  const settings = getWorkspaceSettings(data);
+  const scene = settings.backgrounds[pathname.startsWith("/settings") ? "settings" : isCreativePage ? "creative" : "home"];
 
   useEffect(() => {
     const syncHash = () => setCurrentHash(window.location.hash);
@@ -28,7 +33,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   return (
-    <div className={`app-frame ${isCreativePage ? "scene-winter" : "scene-sunset"}`}>
+    <div className={`app-frame scene-${scene}${settings.showDailyFooter ? "" : " without-daily-footer"}`}>
       <div className="scene-background" aria-hidden="true" />
       <header className="site-header">
         <div className="site-header-inner">
@@ -59,11 +64,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+            <Link href="/settings" className={`site-nav-link settings-nav-link${pathname === "/settings" ? " is-active" : ""}`}
+              aria-label="Settings" title="Settings" aria-current={pathname === "/settings" ? "page" : undefined}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="m9.4 3 .6-1h4l.6 1 .4 2 1.7 1 1.9-.6 1.1.1 2 3.5-.5 1-1.5 1.4v2l1.5 1.4.5 1-2 3.5-1.1.1-1.9-.6-1.7 1-.4 2-.6 1h-4l-.6-1-.4-2-1.7-1-1.9.6-1.1-.1-2-3.5.5-1L4.3 13v-2L2.8 9.6l-.5-1 2-3.5 1.1-.1 1.9.6 1.7-1z" transform="translate(0 1) scale(1 .91)" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </Link>
           </nav>
         </div>
       </header>
       <main className="main-content">{children}</main>
-      <DailyFooter />
+      {settings.showDailyFooter && <DailyFooter />}
     </div>
   );
 }

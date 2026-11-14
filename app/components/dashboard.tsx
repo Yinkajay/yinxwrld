@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useWorkspace } from "@/app/hooks/use-workspace";
+import { useCategoryFilter } from "@/app/hooks/use-category-filter";
 import {
   addDaysToKey,
   createId,
@@ -9,9 +10,7 @@ import {
   formatWeekRange,
   getLagosDayKey,
   getWeekStartKey,
-  addCustomCategory,
   filterByCategory,
-  normalizeCategoryName,
   type Task,
   type TaskPeriod,
   type TaskRepeat,
@@ -23,6 +22,7 @@ import StorageNotice from "@/app/components/storage-notice";
 import { copyTaskToPeriod, selectPlannerTasks, setWeeklyDismissal } from "@/app/lib/planner";
 import { deleteTaskOccurrence, editRepeatingTask, moveTaskOccurrenceToWeek, setTaskRepeat, stopRecurringTask, type TaskEditChange } from "@/app/lib/recurrence";
 import { RecurringTasksPanel } from "@/app/components/repeat-controls";
+import { assignWorkspaceCategory, changeWorkspaceSettings, getWorkspaceCategories, getWorkspaceSettings, type SettingsPatch } from "@/app/lib/workspace-settings";
 
 type RolloverReview = {
   key: string;
@@ -160,13 +160,14 @@ function HistoryTaskRow({ task, onUpdate, onDelete }: {
 export default function Dashboard() {
   const { data, isLoaded, isConnected, storageMessage, retryConnection, updateWorkspace } = useWorkspace();
   const [todayKey, setTodayKey] = useState<string | null>(null);
-  const [combined, setCombined] = useState(false);
-  const [showWeek, setShowWeek] = useState(false);
-  const [dayView, setDayView] = useState<"list" | "board">("list");
-  const [weekView, setWeekView] = useState<"list" | "board">("list");
-  const [dayCategory, setDayCategory] = useState("");
-  const [weekCategory, setWeekCategory] = useState("");
-  const [combinedCategory, setCombinedCategory] = useState("");
+  const settings = getWorkspaceSettings(data);
+  const combined = settings.plannerLayout === "combined";
+  const showWeek = settings.plannerLayout === "both";
+  const { dayView, weekView } = settings;
+  const categories = getWorkspaceCategories(data);
+  const [dayCategory, setDayCategory] = useCategoryFilter(categories);
+  const [weekCategory, setWeekCategory] = useCategoryFilter(categories);
+  const [combinedCategory, setCombinedCategory] = useCategoryFilter(categories);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyPeriod, setHistoryPeriod] = useState<TaskPeriod>("day");
   const [historySelection, setHistorySelection] = useState("");
@@ -210,7 +211,9 @@ export default function Dashboard() {
   }, []);
 
   const weekKey = todayKey ? getWeekStartKey(todayKey) : null;
-  const categories = data.categories ?? [];
+  function changePreferences(patch: SettingsPatch) {
+    void updateWorkspace((current) => changeWorkspaceSettings(current, patch));
+  }
   const { dayTasks, weekTasks, currentTasks } = selectPlannerTasks(data.tasks, todayKey);
   const visibleCurrentTasks = filterByCategory(currentTasks, combinedCategory);
   const pastDayKeys = [...new Set(data.tasks.filter((task) => task.period === "day" && task.periodKey !== todayKey).map((task) => task.periodKey))].sort().reverse();
@@ -235,10 +238,9 @@ export default function Dashboard() {
       updatedAt: now,
     };
     updateWorkspace((current) => {
-      const category = normalizeCategoryName(categoryInput, current.categories ?? []);
+      const { data: categorized, category } = assignWorkspaceCategory(current, categoryInput);
       const next = {
-        ...current,
-        categories: addCustomCategory(current.categories ?? [], category),
+        ...categorized,
         tasks: [...current.tasks, category ? { ...task, category } : task],
       };
       return setTaskRepeat(next, task.id, repeat, seriesId, now);
@@ -250,11 +252,7 @@ export default function Dashboard() {
     const seriesId = createId();
     updateWorkspace((current) => {
       const hasCategory = Object.prototype.hasOwnProperty.call(change, "category");
-      const category = hasCategory ? normalizeCategoryName(change.category ?? "", current.categories ?? []) : undefined;
-      const next = {
-        ...current,
-        categories: hasCategory ? addCustomCategory(current.categories ?? [], category) : current.categories,
-      };
+      const { data: next, category } = hasCategory ? assignWorkspaceCategory(current, change.category ?? "") : { data: current, category: undefined };
       return editRepeatingTask(next, taskId, hasCategory ? { ...change, category } : change, seriesId, now);
     });
   }
@@ -335,7 +333,7 @@ export default function Dashboard() {
                 className={`button button-quiet show-week-button${showWeek ? " is-on" : ""}`}
                 type="button"
                 aria-pressed={showWeek}
-                onClick={() => setShowWeek((current) => !current)}
+                onClick={() => changePreferences({ plannerLayout: showWeek ? "today" : "both" })}
               >
                 {showWeek ? "Today only" : "Show both"}
               </button>
@@ -345,7 +343,7 @@ export default function Dashboard() {
                 className={`button combine-button${combined ? " is-on" : ""}`}
                 type="button"
                 aria-pressed={combined}
-                onClick={() => setCombined((current) => !current)}
+                onClick={() => changePreferences({ plannerLayout: combined ? "both" : "combined" })}
               >
                 <span aria-hidden="true">{combined ? "↙" : "⇄"}</span>
                 {combined ? "Separate lists" : "Combine on a board"}
@@ -409,7 +407,7 @@ export default function Dashboard() {
               selectedCategory={dayCategory}
               onCategoryChange={setDayCategory}
               view={dayView}
-              onViewChange={setDayView}
+              onViewChange={(dayView) => changePreferences({ dayView })}
               onAddTask={addTask}
               onUpdateTask={updateTask}
               onDeleteTask={deleteTask}
@@ -426,7 +424,7 @@ export default function Dashboard() {
                 selectedCategory={weekCategory}
                 onCategoryChange={setWeekCategory}
                 view={weekView}
-                onViewChange={setWeekView}
+                onViewChange={(weekView) => changePreferences({ weekView })}
                 onAddTask={addTask}
                 onUpdateTask={updateTask}
                 onDeleteTask={deleteTask}

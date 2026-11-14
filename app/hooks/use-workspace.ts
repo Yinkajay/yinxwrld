@@ -1,17 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   clearLegacyWorkspace,
   emptyWorkspace,
   hasWorkspaceEntries,
-  mergeCategoryLists,
   readLegacyWorkspace,
   type LegacyWorkspace,
   type WorkspaceData,
 } from "@/app/lib/workspace";
 import { persistWorkspaceMutation, readRemoteWorkspace, type WorkspaceMutation } from "@/app/lib/workspace-client";
 import { materializeRecurringTasks } from "@/app/lib/recurrence";
+import { mergeWorkspaces, WorkspaceInputError } from "@/app/lib/workspace-settings";
 
 function enqueueRemoteTask<T>(queue: { current: Promise<void> }, task: () => Promise<T>) {
   const result = queue.current.catch(() => undefined).then(task);
@@ -23,34 +23,15 @@ function isSameWorkspace(left: WorkspaceData, right: WorkspaceData) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-function mergeById<T extends { id: string; updatedAt: string }>(remote: T[], legacy: T[]) {
-  const merged = new Map<string, T>();
-  for (const entry of remote) merged.set(entry.id, entry);
-  for (const entry of legacy) {
-    const current = merged.get(entry.id);
-    if (!current || entry.updatedAt > current.updatedAt) merged.set(entry.id, entry);
-  }
-  return [...merged.values()];
-}
-
-function mergeWorkspaces(remote: WorkspaceData, legacy: WorkspaceData): WorkspaceData {
-  return {
-    version: 1,
-    tasks: mergeById(remote.tasks, legacy.tasks),
-    projects: mergeById(remote.projects, legacy.projects),
-    ideas: mergeById(remote.ideas, legacy.ideas),
-    rolloverHandled: { ...remote.rolloverHandled, ...legacy.rolloverHandled },
-    categories: mergeCategoryLists(remote.categories, legacy.categories),
-    recurringTasks: mergeById(remote.recurringTasks ?? [], legacy.recurringTasks ?? []),
-  };
-}
-
 const unavailableMessage = "MongoDB is unavailable. Your workspace cannot be loaded or saved right now. Nothing is saved in this browser.";
 
-export function useWorkspace() {
+function useWorkspaceState() {
   const [data, setData] = useState<WorkspaceData>(() => emptyWorkspace());
   const [isLoaded, setIsLoaded] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [storageMessage, setStorageMessage] = useState<string | null>(null);
   const dataRef = useRef(data);
   const persistedDataRef = useRef<WorkspaceData>(emptyWorkspace());
@@ -58,6 +39,7 @@ export function useWorkspace() {
   const remoteQueueRef = useRef<Promise<void>>(Promise.resolve());
   const legacyWorkspaceRef = useRef<LegacyWorkspace | null>(null);
   const pendingWritesRef = useRef(0);
+  const pendingMutationsRef = useRef<{ update: WorkspaceMutation; optimistic: boolean }[]>([]);
   const refreshPromiseRef = useRef<Promise<void> | null>(null);
 
   const adoptWorkspace = useCallback((next: WorkspaceData) => {
@@ -116,23 +98,44 @@ export function useWorkspace() {
   }, [loadFromMongo, markUnavailable]);
 
   const retryConnection = useCallback(() => {
-    void queueRemoteRefresh();
+    void queueRemoteRefresh().then(() => { if (isConnectedRef.current) setSaveError(null); });
   }, [queueRemoteRefresh]);
 
-  const queueRemoteWrite = useCallback((update: WorkspaceMutation) => {
+  const queueRemoteWrite = useCallback((update: WorkspaceMutation, optimistic: boolean) => {
     pendingWritesRef.current += 1;
-    void enqueueRemoteTask(remoteQueueRef, async () => {
-      const saved = await persistWorkspaceMutation(update);
-      persistedDataRef.current = saved.data;
-      if (pendingWritesRef.current === 1) adoptWorkspace(saved.data);
-    }).catch(() => {
-      markUnavailable();
-      if (pendingWritesRef.current === 1) {
-        dataRef.current = persistedDataRef.current;
-        setData(persistedDataRef.current);
+    const operation = { update, optimistic };
+    pendingMutationsRef.current.push(operation);
+    setIsSaving(true);
+    setSaveError(null);
+    return enqueueRemoteTask(remoteQueueRef, async () => {
+      let success = false;
+      try {
+        const saved = await persistWorkspaceMutation(update);
+        persistedDataRef.current = saved.data;
+        isConnectedRef.current = true;
+        setIsConnected(true);
+        setStorageMessage(null);
+        setHasSaved(true);
+        success = true;
+      } catch (error) {
+        setSaveError(error instanceof Error ? error.message : "This change could not be saved. Try again.");
+        if (!(error instanceof WorkspaceInputError)) markUnavailable();
+      } finally {
+        pendingMutationsRef.current = pendingMutationsRef.current.filter((item) => item !== operation);
+        pendingWritesRef.current -= 1;
+        let optimistic = persistedDataRef.current;
+        for (const pending of pendingMutationsRef.current) {
+          if (pending.optimistic) {
+            try { optimistic = pending.update(optimistic); } catch { /* Its queued save will report the validation error. */ }
+          }
+        }
+        dataRef.current = optimistic;
+        setData(optimistic);
+        setIsSaving(pendingWritesRef.current > 0);
       }
-    }).finally(() => { pendingWritesRef.current -= 1; });
-  }, [adoptWorkspace, markUnavailable]);
+      return success;
+    });
+  }, [markUnavailable]);
 
   useEffect(() => {
     let cancelled = false;
@@ -160,14 +163,33 @@ export function useWorkspace() {
     };
   }, [queueRemoteRefresh]);
 
-  const updateWorkspace = useCallback((update: (current: WorkspaceData) => WorkspaceData) => {
-    if (!isConnectedRef.current) return;
-
-    const next = update(dataRef.current);
-    dataRef.current = next;
-    setData(next);
-    queueRemoteWrite(update);
+  const updateWorkspace = useCallback((update: (current: WorkspaceData) => WorkspaceData, options: { optimistic?: boolean } = {}) => {
+    if (!isConnectedRef.current) return Promise.resolve(false);
+    try {
+      const next = update(dataRef.current);
+      if (options.optimistic !== false) {
+        dataRef.current = next;
+        setData(next);
+      }
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "This change could not be saved.");
+      return Promise.resolve(false);
+    }
+    return queueRemoteWrite(update, options.optimistic !== false);
   }, [queueRemoteWrite]);
 
-  return { data, isLoaded, isConnected, storageMessage, retryConnection, updateWorkspace };
+  return { data, isLoaded, isConnected, isSaving, hasSaved, saveError, storageMessage, retryConnection, updateWorkspace };
+}
+
+const WorkspaceContext = createContext<ReturnType<typeof useWorkspaceState> | null>(null);
+
+export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  const workspace = useWorkspaceState();
+  return createElement(WorkspaceContext.Provider, { value: workspace }, children);
+}
+
+export function useWorkspace() {
+  const workspace = useContext(WorkspaceContext);
+  if (!workspace) throw new Error("useWorkspace must be used inside WorkspaceProvider.");
+  return workspace;
 }

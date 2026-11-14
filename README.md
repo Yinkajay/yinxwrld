@@ -16,6 +16,16 @@ Editing an occurrence updates its title, category, and schedule for future repea
 
 See [TODO.md](./TODO.md) for the planned private journal and other future work.
 
+## Settings
+
+Open the gear in the navigation or visit `/settings`. Choose the sunset or winter background for Home, Creative, and Settings, show or hide the daily footer, and choose the planner's current layout and list/board views. Home's view buttons update the same preferences. All preferences save to MongoDB and follow you across devices; Saving/Saved feedback and inline errors describe the save result.
+
+Settings also manages every task/project category, including the original four. Renaming updates all linked tasks, projects, and repeating schedules, including past tasks. Removal lets you choose a replacement or leave entries uncategorized, without deleting them. Removed categories stay removed unless you explicitly add them again. Existing workspaces retain their categories until changed; no database migration is required.
+
+The Repeating tasks section shows active and paused schedules. Edit future task names, categories, repeat frequency, and the weekday for weekly tasks in Today. Existing occurrences retain their details. Resuming preserves the original weekday and deletion exclusions, creates only a missing occurrence that is currently due, and does not backfill missed dates.
+
+Run `npm run test:settings` for category, preference, compatibility, schedule, and concurrent-save checks. A shared workspace provider owns the polling and save queue for every page, the background, and the footer.
+
 ## Local development
 
 Run the development server:

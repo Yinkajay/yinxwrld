@@ -3,13 +3,14 @@
 import { repeatLabel } from "@/app/lib/recurrence";
 import type { RecurringTask, TaskPeriod, TaskRepeat } from "@/app/lib/workspace";
 
-export function RepeatInput({ id, value, period, onChange }: {
+export function RepeatInput({ id, value, period, onChange, allowNone = true }: {
   id: string;
   value: TaskRepeat;
   period: TaskPeriod;
   onChange: (repeat: TaskRepeat) => void;
+  allowNone?: boolean;
 }) {
-  const choices: TaskRepeat[] = period === "week" ? ["none", "weekly"] : ["none", "daily", "weekdays", "weekly"];
+  const choices: TaskRepeat[] = [...(allowNone ? ["none" as const] : []), ...(period === "week" ? ["weekly" as const] : ["daily" as const, "weekdays" as const, "weekly" as const])];
   return (
     <label className="repeat-input" htmlFor={id}>
       <span id={`${id}-label`}>Repeat</span>

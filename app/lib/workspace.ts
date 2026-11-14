@@ -7,6 +7,16 @@ type CategorizedItem = { category?: string };
 export type TaskPeriod = "day" | "week";
 export type TaskStatus = "todo" | "doing" | "done";
 export type TaskRepeat = "none" | "daily" | "weekdays" | "weekly";
+export type WorkspaceScene = "sunset" | "winter";
+export type PlannerLayout = "today" | "both" | "combined";
+export type TaskView = "list" | "board";
+export type WorkspaceSettings = {
+  backgrounds: { home: WorkspaceScene; creative: WorkspaceScene; settings: WorkspaceScene };
+  showDailyFooter: boolean;
+  plannerLayout: PlannerLayout;
+  dayView: TaskView;
+  weekView: TaskView;
+};
 
 export type RecurringTask = {
   id: string;
@@ -64,6 +74,8 @@ export type WorkspaceData = {
   rolloverHandled: Record<string, "carried" | "kept">;
   categories?: string[];
   recurringTasks?: RecurringTask[];
+  settings?: WorkspaceSettings;
+  categoryCatalog?: string[];
 };
 
 const STORAGE_KEY = "daybook-workspace-v1";
@@ -196,10 +208,22 @@ function isRecurringTask(value: unknown): value is RecurringTask {
     typeof value.createdAt === "string" && typeof value.updatedAt === "string";
 }
 
+function isWorkspaceSettings(value: unknown): value is WorkspaceSettings {
+  if (!isRecord(value) || !isRecord(value.backgrounds)) return false;
+  const isScene = (scene: unknown) => scene === "sunset" || scene === "winter";
+  const isView = (view: unknown) => view === "list" || view === "board";
+  return isScene(value.backgrounds.home) && isScene(value.backgrounds.creative) && isScene(value.backgrounds.settings) &&
+    typeof value.showDailyFooter === "boolean" &&
+    ["today", "both", "combined"].includes(value.plannerLayout as string) && isView(value.dayView) && isView(value.weekView);
+}
+
 export function isWorkspaceData(value: unknown): value is WorkspaceData {
   return (
     isRecord(value) &&
     value.version === 1 &&
+    (value.settings === undefined || isWorkspaceSettings(value.settings)) &&
+    (value.categoryCatalog === undefined || (Array.isArray(value.categoryCatalog) && value.categoryCatalog.every(isValidCategory) &&
+      new Set(value.categoryCatalog.map((category) => category.toLocaleLowerCase())).size === value.categoryCatalog.length)) &&
     Array.isArray(value.tasks) && value.tasks.every(isTask) &&
     Array.isArray(value.projects) && value.projects.every(isProject) &&
     Array.isArray(value.ideas) && value.ideas.every(isIdea) &&
@@ -217,7 +241,7 @@ export function isWorkspaceData(value: unknown): value is WorkspaceData {
 }
 
 export function hasWorkspaceEntries(data: WorkspaceData) {
-  return data.tasks.length > 0 || data.projects.length > 0 || data.ideas.length > 0 || Boolean(data.categories?.length) || Boolean(data.recurringTasks?.length) || Object.keys(data.rolloverHandled).length > 0;
+  return data.tasks.length > 0 || data.projects.length > 0 || data.ideas.length > 0 || Boolean(data.categories?.length) || Boolean(data.recurringTasks?.length) || data.categoryCatalog !== undefined || data.settings !== undefined || Object.keys(data.rolloverHandled).length > 0;
 }
 
 export type LegacyWorkspace = {

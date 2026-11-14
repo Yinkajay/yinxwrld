@@ -2,17 +2,17 @@
 
 import { useState, type FormEvent } from "react";
 import { useWorkspace } from "@/app/hooks/use-workspace";
+import { useCategoryFilter } from "@/app/hooks/use-category-filter";
 import StorageNotice from "@/app/components/storage-notice";
 import { CategoryBadge, CategoryFilter, CategoryInput } from "@/app/components/category-controls";
 import {
-  addCustomCategory,
   createId,
   filterByCategory,
-  normalizeCategoryName,
   type CreativeIdea,
   type CreativeProject,
   type ProjectStatus,
 } from "@/app/lib/workspace";
+import { assignWorkspaceCategory, getWorkspaceCategories } from "@/app/lib/workspace-settings";
 
 const projectStatuses: { value: ProjectStatus; label: string }[] = [
   { value: "planned", label: "Planned" },
@@ -174,8 +174,8 @@ export default function CreativeWorkspace() {
   const [projectTitle, setProjectTitle] = useState("");
   const [projectNotes, setProjectNotes] = useState("");
   const [projectCategory, setProjectCategory] = useState("");
-  const [selectedProjectCategory, setSelectedProjectCategory] = useState("");
-  const categories = data.categories ?? [];
+  const categories = getWorkspaceCategories(data);
+  const [selectedProjectCategory, setSelectedProjectCategory] = useCategoryFilter(categories);
   const visibleProjects = filterByCategory(data.projects, selectedProjectCategory);
 
   function addIdea(event: FormEvent<HTMLFormElement>) {
@@ -211,10 +211,9 @@ export default function CreativeWorkspace() {
       updatedAt: now,
     };
     updateWorkspace((current) => {
-      const category = normalizeCategoryName(projectCategory, current.categories ?? []);
+      const { data: categorized, category } = assignWorkspaceCategory(current, projectCategory);
       return {
-        ...current,
-        categories: addCustomCategory(current.categories ?? [], category),
+        ...categorized,
         projects: [category ? { ...project, category } : project, ...current.projects],
       };
     });
@@ -228,10 +227,9 @@ export default function CreativeWorkspace() {
     const now = new Date().toISOString();
     updateWorkspace((current) => {
       const hasCategory = Object.prototype.hasOwnProperty.call(change, "category");
-      const category = hasCategory ? normalizeCategoryName(change.category ?? "", current.categories ?? []) : undefined;
+      const { data: categorized, category } = hasCategory ? assignWorkspaceCategory(current, change.category ?? "") : { data: current, category: undefined };
       return {
-        ...current,
-        categories: hasCategory ? addCustomCategory(current.categories ?? [], category) : current.categories,
+        ...categorized,
         projects: current.projects.map((project) => project.id === projectId
           ? { ...project, ...change, ...(hasCategory ? { category } : {}), updatedAt: now }
           : project),

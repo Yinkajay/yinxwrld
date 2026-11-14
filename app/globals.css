@@ -1603,6 +1603,340 @@ button:disabled {
   min-height: 176px;
 }
 
+/* Settings shares the planner's centered, quiet surfaces. */
+.settings-nav-link {
+  display: inline-flex;
+  min-width: 36px;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+}
+
+.without-daily-footer .main-content {
+  padding-bottom: 24px;
+}
+
+.settings-page {
+  max-width: 960px;
+  padding-top: 40px;
+}
+
+.settings-heading {
+  justify-content: center;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.settings-controls,
+.settings-loading {
+  display: grid;
+  width: 100%;
+  max-width: 760px;
+  min-width: 0;
+  gap: 24px;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+}
+
+.settings-page .storage-notice {
+  max-width: 760px;
+  margin: 0 auto 24px;
+}
+
+.settings-save-status {
+  min-height: 24px;
+  margin-bottom: 24px;
+  color: white;
+  font-size: 14px;
+  text-align: center;
+  text-shadow: 0 1px 4px rgb(20 15 45 / 90%);
+}
+
+.settings-section {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgb(255 254 250 / 94%);
+  color: var(--foreground);
+  text-shadow: none;
+}
+
+.settings-section h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+  letter-spacing: -0.03em;
+}
+
+.settings-description,
+.settings-editor p {
+  margin: 8px 0 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 20px;
+  text-wrap: pretty;
+}
+
+.background-settings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.background-picker {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.background-picker legend {
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 550;
+}
+
+.background-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.background-choice {
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.background-choice:hover,
+.background-choice.is-selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.scene-preview {
+  display: block;
+  height: 80px;
+  border-radius: 4px;
+  background-position: center;
+  background-size: cover;
+}
+
+.preview-sunset { background-image: url("/bgs/sunset-meadow.png"); }
+.preview-winter { background-image: url("/bgs/winter-campfire.png"); }
+
+.background-choice-label {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.background-choice input,
+.settings-toggle input {
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+
+.settings-toggle {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.planner-preferences {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.settings-select,
+.settings-field {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.settings-section input:not([type="checkbox"]):not([type="radio"]),
+.settings-section select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: white;
+  color: var(--foreground);
+  font-size: 14px;
+}
+
+.settings-add-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.settings-add-form .settings-field {
+  flex: 1;
+}
+
+.settings-add-form .button {
+  min-height: 40px;
+}
+
+.settings-items {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-item {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.settings-item-heading,
+.settings-item-actions,
+.settings-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-item-heading {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.settings-item-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 160px;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+
+.settings-item-copy strong {
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 20px;
+}
+
+.settings-item-copy > span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.settings-item-actions {
+  flex-wrap: wrap;
+}
+
+.settings-item-actions .text-button {
+  min-height: 36px;
+}
+
+.schedule-state {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1f0e9;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.schedule-state.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.settings-editor {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.settings-editor > .settings-field:first-child,
+.settings-editor p,
+.settings-editor-actions {
+  grid-column: 1 / -1;
+}
+
+.settings-editor .category-input,
+.settings-editor .repeat-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  font-size: 14px;
+}
+
+.settings-editor p {
+  margin: 0;
+}
+
+.settings-editor-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.settings-error,
+.settings-editor .settings-error {
+  color: var(--danger);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.settings-save-error {
+  max-width: 760px;
+  margin: 0 auto 24px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+@media (max-width: 720px) {
+  .settings-page .settings-heading { align-items: center; }
+  .settings-section { padding: 16px; }
+  .background-settings,
+  .planner-preferences { grid-template-columns: minmax(0, 1fr); }
+  .scene-preview { height: 96px; }
+}
+
+@media (max-width: 420px) {
+  .settings-editor { grid-template-columns: minmax(0, 1fr); }
+  .settings-add-form { flex-wrap: wrap; }
+  .settings-add-form .settings-field { flex-basis: 100%; }
+  .settings-add-form > .button { margin-left: auto; }
+}
+
+@media (max-width: 359px) {
+  .site-header .site-header-inner { flex-direction: column; gap: 8px; }
+}
+
 .skeleton {
   overflow: hidden;
   border-radius: 8px;

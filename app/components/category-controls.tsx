@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChangeEvent } from "react";
-import { getCategoryOptions, MAX_CATEGORY_LENGTH } from "@/app/lib/workspace";
+import { MAX_CATEGORY_LENGTH } from "@/app/lib/workspace";
 
 export function CategoryInput({
   id,
@@ -37,7 +37,7 @@ export function CategoryInput({
         autoComplete="off"
       />
       <datalist id={optionsId}>
-        {getCategoryOptions(categories).map((category) => <option key={category} value={category} />)}
+        {categories.map((category) => <option key={category} value={category} />)}
       </datalist>
     </label>
   );
@@ -59,7 +59,7 @@ export function CategoryFilter({
       <span>Category</span>
       <select id={id} value={value} onChange={(event) => onChange(event.target.value)}>
         <option value="">All categories</option>
-        {getCategoryOptions(categories).map((category) => <option key={category} value={category}>{category}</option>)}
+        {categories.map((category) => <option key={category} value={category}>{category}</option>)}
       </select>
     </label>
   );

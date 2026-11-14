@@ -3,6 +3,7 @@
 ## Implemented
 
 - [x] Recurring tasks: daily, weekdays, and weekly schedules with independent completion for each occurrence, shared MongoDB persistence, and controls to stop future repeats.
+- [x] Settings: per-page backgrounds, footer visibility, remembered planner views, shared category management, and recurring schedule editing and pause/resume.
 
 ## Next: personal journal
 

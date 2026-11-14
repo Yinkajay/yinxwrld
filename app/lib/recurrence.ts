@@ -1,5 +1,6 @@
 import { changeTask, moveDailyTaskToWeek, type TaskChange } from "./planner";
 import { getLagosDayKey, getWeekStartKey, type RecurringTask, type Task, type TaskRepeat, type WorkspaceData } from "./workspace";
+import { assignWorkspaceCategory, nextWeekday, WorkspaceInputError } from "./workspace-settings";
 
 export type TaskEditChange = TaskChange & { repeat?: TaskRepeat };
 
@@ -42,6 +43,41 @@ export function materializeRecurringTasks(data: WorkspaceData, now: string): Wor
 export function stopRecurringTask(data: WorkspaceData, seriesId: string, now: string): WorkspaceData {
   return { ...data, recurringTasks: (data.recurringTasks ?? []).map((series) => series.id === seriesId
     ? { ...series, active: false, updatedAt: now } : series) };
+}
+
+export type RecurringScheduleChange = {
+  title: string;
+  category: string;
+  repeat: Exclude<TaskRepeat, "none">;
+  weekday: number;
+};
+
+/** Settings changes affect templates and new occurrences, never existing tasks. */
+export function editRecurringSchedule(data: WorkspaceData, seriesId: string, change: RecurringScheduleChange, now: string): WorkspaceData {
+  const existing = data.recurringTasks?.find((series) => series.id === seriesId);
+  if (!existing) throw new WorkspaceInputError("This schedule is no longer available.");
+  const title = change.title.trim();
+  if (!title || title.length > 180) throw new WorkspaceInputError("Enter a task name of 180 characters or fewer.");
+  if (!["daily", "weekdays", "weekly"].includes(change.repeat) || (existing.period === "week" && change.repeat !== "weekly")) {
+    throw new WorkspaceInputError("Choose an available repeat frequency.");
+  }
+  if (!Number.isInteger(change.weekday) || change.weekday < 0 || change.weekday > 6) throw new WorkspaceInputError("Choose a weekday.");
+  const { data: categorized, category } = assignWorkspaceCategory(data, change.category);
+  const originalWeekday = weekday(existing.startKey);
+  const changedSchedule = existing.repeat !== change.repeat || (existing.period === "day" && change.repeat === "weekly" && originalWeekday !== change.weekday);
+  const today = getLagosDayKey(new Date(now));
+  const startKey = changedSchedule
+    ? existing.period === "day" && change.repeat === "weekly" ? nextWeekday(today, change.weekday) : today
+    : existing.startKey;
+  const next = { ...categorized, recurringTasks: categorized.recurringTasks!.map((series) => series.id === seriesId
+    ? { ...series, title, category, repeat: change.repeat, startKey, updatedAt: now } : series) };
+  return materializeRecurringTasks(next, now);
+}
+
+export function setRecurringScheduleActive(data: WorkspaceData, seriesId: string, active: boolean, now: string): WorkspaceData {
+  if (!data.recurringTasks?.some((series) => series.id === seriesId)) throw new WorkspaceInputError("This schedule is no longer available.");
+  const next = { ...data, recurringTasks: data.recurringTasks.map((series) => series.id === seriesId ? { ...series, active, updatedAt: now } : series) };
+  return active ? materializeRecurringTasks(next, now) : next;
 }
 
 export function setTaskRepeat(data: WorkspaceData, taskId: string, repeat: TaskRepeat, newSeriesId: string, now: string): WorkspaceData {

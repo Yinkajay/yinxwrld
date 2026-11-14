@@ -17,7 +17,8 @@ function load(file, imports = {}) {
 
 const workspace = load("app/lib/workspace.ts");
 const planner = load("app/lib/planner.ts", { "./workspace": workspace });
-const recurrence = load("app/lib/recurrence.ts", { "./workspace": workspace, "./planner": planner });
+const settings = load("app/lib/workspace-settings.ts", { "./workspace": workspace });
+const recurrence = load("app/lib/recurrence.ts", { "./workspace": workspace, "./planner": planner, "./workspace-settings": settings });
 const client = load("app/lib/workspace-client.ts", { "./workspace": workspace });
 const now = "2026-11-11T12:00:00.000Z";
 const today = "2026-11-11";
