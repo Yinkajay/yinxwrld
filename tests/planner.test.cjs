@@ -238,6 +238,49 @@ test("moving an old completed daily task keeps it Done today", () => {
   assert.equal(planner.selectPlannerTasks(moved, tomorrow).dayTasks.length, 0);
 });
 
+test("lookahead includes future daily and weekly tasks in date order", () => {
+  const tasks = [
+    task("future-week-two", { periodKey: "2026-11-23" }),
+    task("tomorrow", { period: "day", periodKey: tomorrow }),
+    task("current-week"),
+    task("future-week-one", { periodKey: "2026-11-16" }),
+    task("today", { period: "day", periodKey: today }),
+    task("past-day", { period: "day", periodKey: "2026-11-10" }),
+    task("later-day", { period: "day", periodKey: "2026-11-20" }),
+  ];
+
+  assert.deepEqual(ids(planner.selectLookaheadTasks(tasks, today)), [
+    "tomorrow", "future-week-one", "later-day", "future-week-two",
+  ]);
+  assert.deepEqual(planner.selectLookaheadTasks(tasks, null), []);
+});
+
+test("bringing future tasks back preserves their identity and status in the current period", () => {
+  const daily = task("tomorrow", {
+    period: "day", periodKey: tomorrow, status: "doing", category: "Personal",
+  });
+  const weekly = task("next-week", {
+    periodKey: "2026-11-16", status: "todo", category: "Work",
+  });
+  const original = [daily, weekly];
+  const todayList = planner.bringFutureTaskToCurrentPeriod(original, daily.id, today, now);
+  assert.equal(todayList[0].id, daily.id);
+  assert.equal(todayList[0].period, "day");
+  assert.equal(todayList[0].periodKey, today);
+  assert.equal(todayList[0].status, "doing");
+  assert.equal(todayList[0].category, "Personal");
+  assert.equal(todayList[0].createdAt, daily.createdAt);
+  assert.equal(todayList[0].updatedAt, now);
+  assert.deepEqual(ids(planner.selectPlannerTasks(todayList, today).dayTasks), [daily.id]);
+
+  const weekList = planner.bringFutureTaskToCurrentPeriod(original, weekly.id, today, now);
+  assert.equal(weekList[1].periodKey, "2026-11-09");
+  assert.equal(weekList[1].status, "todo");
+  assert.equal(weekList[1].createdAt, weekly.createdAt);
+  assert.deepEqual(ids(planner.selectPlannerTasks(weekList, today).weekTasks), [weekly.id]);
+  assert.deepEqual(planner.bringFutureTaskToCurrentPeriod(original, "missing", today, now), original);
+});
+
 test("actions leave history and unrelated tasks untouched", () => {
   const oldDaily = task("old-day", { period: "day", periodKey: "2026-11-10" });
   const oldWeekly = task("old-week", { periodKey: "2026-11-02" });

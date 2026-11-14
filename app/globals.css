@@ -1623,6 +1623,133 @@ button:disabled {
   min-height: 176px;
 }
 
+.lookahead-panel {
+  width: min(100%, 900px);
+  margin: 16px auto 0;
+  overflow: clip;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: rgb(255 254 250 / 90%);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(12px);
+}
+
+.lookahead-panel > summary {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  color: #4b4d43;
+  cursor: pointer;
+  list-style: none;
+}
+
+.lookahead-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.lookahead-summary-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lookahead-summary-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.lookahead-summary-detail,
+.lookahead-description {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.lookahead-summary-toggle {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--accent-dark);
+  font-size: 20px;
+  line-height: 1;
+  transition: transform 160ms ease;
+}
+
+.lookahead-panel[open] .lookahead-summary-toggle {
+  transform: rotate(45deg);
+}
+
+.lookahead-content {
+  padding: 0 20px 16px;
+  border-top: 1px solid #efeee8;
+}
+
+.lookahead-description {
+  margin: 14px 0 18px;
+}
+
+.lookahead-group + .lookahead-group {
+  margin-top: 20px;
+}
+
+.lookahead-group h3 {
+  margin: 0 0 6px;
+  color: #686a61;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.lookahead-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lookahead-task {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0efe9;
+}
+
+.lookahead-task:last-child {
+  border-bottom: 0;
+}
+
+.lookahead-task .history-task-title {
+  flex: 1 1 180px;
+}
+
+.lookahead-task .category-badge {
+  flex: 0 0 auto;
+}
+
+.lookahead-status {
+  min-height: 32px;
+  flex: 0 0 auto;
+  margin-left: 0;
+  padding: 4px 24px 4px 8px;
+  border-radius: 6px;
+  background-color: var(--stage-fill);
+  color: var(--stage-ink);
+  font-size: 14px;
+}
+
+.lookahead-bring-back {
+  flex: 0 0 auto;
+}
+
 /* Settings shares the planner's centered, quiet surfaces. */
 .settings-nav-link {
   display: inline-flex;
@@ -2609,6 +2736,39 @@ button:disabled {
   .history-select {
     max-width: none;
     flex: 1;
+  }
+
+  .lookahead-panel > summary {
+    min-height: 60px;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .lookahead-content {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .lookahead-task {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 0;
+  }
+
+  .lookahead-task .history-task-title {
+    flex-basis: calc(100% - 28px);
+  }
+
+  .lookahead-task .category-badge {
+    margin-left: 28px;
+  }
+
+  .lookahead-status {
+    margin-left: 0;
+  }
+
+  .lookahead-bring-back {
+    margin-left: auto;
   }
 
   .project-grid {

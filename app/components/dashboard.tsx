@@ -17,9 +17,9 @@ import {
   type WorkspaceData,
 } from "@/app/lib/workspace";
 import { TaskBoard, TaskCollection } from "@/app/components/task-collection";
-import { CategoryFilter } from "@/app/components/category-controls";
+import { CategoryBadge, CategoryFilter } from "@/app/components/category-controls";
 import StorageNotice from "@/app/components/storage-notice";
-import { copyTaskToPeriod, selectPlannerTasks, setWeeklyDismissal } from "@/app/lib/planner";
+import { bringFutureTaskToCurrentPeriod, copyTaskToPeriod, selectLookaheadTasks, selectPlannerTasks, setWeeklyDismissal } from "@/app/lib/planner";
 import { deleteTaskOccurrence, editRepeatingTask, moveTaskOccurrenceToWeek, moveWeeklyOccurrenceToNextWeek, setRecurringScheduleActive, setTaskRepeat, stopRecurringTask, type TaskEditChange } from "@/app/lib/recurrence";
 import { RecurringTasksPanel } from "@/app/components/repeat-controls";
 import { assignWorkspaceCategory, changeWorkspaceSettings, getWorkspaceCategories, getWorkspaceSettings, type SettingsPatch } from "@/app/lib/workspace-settings";
@@ -158,6 +158,66 @@ function HistoryTaskRow({ task, onUpdate, onDelete }: {
   );
 }
 
+type LookaheadGroup = { period: TaskPeriod; periodKey: string; tasks: Task[] };
+
+function LookaheadPanel({ groups, onBringBack, onUpdate }: {
+  groups: LookaheadGroup[];
+  onBringBack: (taskId: string) => void;
+  onUpdate: (taskId: string, status: Task["status"]) => void;
+}) {
+  const count = groups.reduce((total, group) => total + group.tasks.length, 0);
+  if (!count) return null;
+
+  return (
+    <details className="lookahead-panel">
+      <summary>
+        <span className="lookahead-summary-copy">
+          <span className="lookahead-summary-title">Look ahead</span>
+          <span className="lookahead-summary-detail">{count} future {count === 1 ? "task" : "tasks"}</span>
+        </span>
+        <span className="lookahead-summary-toggle" aria-hidden="true">＋</span>
+      </summary>
+      <div className="lookahead-content">
+        <p className="lookahead-description">Tasks you’ve set for a later day or week. Bring any one back when plans change.</p>
+        {groups.map((group) => (
+          <section key={`${group.period}:${group.periodKey}`} className="lookahead-group" aria-label={group.period === "day" ? `Tasks for ${formatDayLabel(group.periodKey)}` : `Tasks for the week of ${formatWeekRange(group.periodKey)}`}>
+            <h3>{group.period === "day" ? formatDayLabel(group.periodKey) : formatWeekRange(group.periodKey)}</h3>
+            <ul className="lookahead-list">
+              {group.tasks.map((task) => (
+                <li key={task.id} className={`lookahead-task${task.status === "done" ? " is-done" : ""}`}>
+                  <span className={`history-status status-${task.status}`} aria-hidden="true" />
+                  <span className="history-task-title">{task.title}</span>
+                  <CategoryBadge category={task.category} />
+                  <select
+                    className={`status-select lookahead-status status-label-${task.status}`}
+                    data-sound-state={task.status}
+                    aria-label={`Status for ${task.title}`}
+                    value={task.status}
+                    onChange={(event) => onUpdate(task.id, event.target.value as Task["status"])}
+                  >
+                    <option value="todo">To do</option>
+                    <option value="doing">Doing</option>
+                    <option value="done">Done</option>
+                  </select>
+                  <button
+                    className="button button-quiet button-small lookahead-bring-back"
+                    type="button"
+                    data-sound="save"
+                    aria-label={`Bring ${task.title} to ${group.period === "day" ? "Today" : "This week"}`}
+                    onClick={() => onBringBack(task.id)}
+                  >
+                    {group.period === "day" ? "Bring to Today" : "Bring to This week"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 export default function Dashboard() {
   const { data, isLoaded, isConnected, storageMessage, retryConnection, updateWorkspace } = useWorkspace();
   const [todayKey, setTodayKey] = useState<string | null>(null);
@@ -216,8 +276,15 @@ export default function Dashboard() {
     void updateWorkspace((current) => changeWorkspaceSettings(current, patch));
   }
   const { dayTasks, weekTasks, currentTasks } = selectPlannerTasks(data.tasks, todayKey);
+  const lookaheadTasks = selectLookaheadTasks(data.tasks, todayKey);
+  const lookaheadGroups = lookaheadTasks.reduce<LookaheadGroup[]>((groups, task) => {
+    const current = groups[groups.length - 1];
+    if (current && current.period === task.period && current.periodKey === task.periodKey) current.tasks.push(task);
+    else groups.push({ period: task.period, periodKey: task.periodKey, tasks: [task] });
+    return groups;
+  }, []);
   const visibleCurrentTasks = filterByCategory(currentTasks, combinedCategory);
-  const pastDayKeys = [...new Set(data.tasks.filter((task) => task.period === "day" && task.periodKey !== todayKey).map((task) => task.periodKey))].sort().reverse();
+  const pastDayKeys = [...new Set(data.tasks.filter((task) => task.period === "day" && todayKey !== null && task.periodKey < todayKey).map((task) => task.periodKey))].sort().reverse();
   const pastWeekKeys = weekKey
     ? [...new Set(data.tasks.filter((task) => task.period === "week" && task.periodKey < weekKey).map((task) => task.periodKey))].sort().reverse()
     : [];
@@ -268,6 +335,15 @@ export default function Dashboard() {
   function moveToNextWeek(taskId: string) {
     const now = new Date().toISOString();
     updateWorkspace((current) => moveWeeklyOccurrenceToNextWeek(current, taskId, now));
+  }
+
+  function bringFutureTaskBack(taskId: string) {
+    if (!todayKey) return;
+    const now = new Date().toISOString();
+    updateWorkspace((current) => ({
+      ...current,
+      tasks: bringFutureTaskToCurrentPeriod(current.tasks, taskId, todayKey, now),
+    }));
   }
 
   function stopRepeating(seriesId: string) {
@@ -452,6 +528,14 @@ export default function Dashboard() {
       </section>
 
       {isLoaded && isConnected && <RecurringTasksPanel tasks={data.recurringTasks ?? []} onStop={stopRepeating} />}
+
+      {isLoaded && isConnected && (
+        <LookaheadPanel
+          groups={lookaheadGroups}
+          onBringBack={bringFutureTaskBack}
+          onUpdate={(taskId, status) => updateTask(taskId, { status })}
+        />
+      )}
 
       {historyOpen && isLoaded && isConnected && (
         <section className="history-panel" id="history-panel" aria-labelledby="history-heading">

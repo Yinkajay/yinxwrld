@@ -18,6 +18,35 @@ export function selectPlannerTasks(tasks: Task[], today: string | null) {
   };
 }
 
+/** Tasks intentionally parked after the current day or week. */
+export function selectLookaheadTasks(tasks: Task[], today: string | null) {
+  if (!today) return [];
+  const currentWeek = getWeekStartKey(today);
+  return tasks
+    .filter((task) => task.period === "day"
+      ? task.periodKey > today
+      : task.periodKey > currentWeek)
+    .sort((left, right) => left.periodKey.localeCompare(right.periodKey)
+      || (left.period === right.period ? 0 : left.period === "day" ? -1 : 1)
+      || left.createdAt.localeCompare(right.createdAt));
+}
+
+/** Brings a future task into the matching current list, keeping its identity and state. */
+export function bringFutureTaskToCurrentPeriod(tasks: Task[], taskId: string, today: string, now: string) {
+  const currentWeek = getWeekStartKey(today);
+  return tasks.map((task) => {
+    const isFutureDay = task.period === "day" && task.periodKey > today;
+    const isFutureWeek = task.period === "week" && task.periodKey > currentWeek;
+    if (task.id !== taskId || (!isFutureDay && !isFutureWeek)) return task;
+    return {
+      ...task,
+      periodKey: task.period === "day" ? today : currentWeek,
+      dismissedOn: undefined,
+      updatedAt: now,
+    };
+  });
+}
+
 export function changeTask(tasks: Task[], taskId: string, change: TaskChange, now: string) {
   return tasks.map((task) => {
     if (task.id !== taskId) return task;
