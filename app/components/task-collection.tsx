@@ -24,6 +24,7 @@ export type TaskContextActions = {
   onShowInToday?: (taskId: string) => void;
   recurringTasks: RecurringTask[];
   onStopRepeating: (seriesId: string) => void;
+  onResumeRepeating: (seriesId: string) => void;
 };
 
 type TaskActions = {
@@ -44,13 +45,18 @@ function TaskItem({
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [draft, setDraft] = useState(task.title);
   const [draftCategory, setDraftCategory] = useState(task.category ?? "");
-  const series = context?.recurringTasks.find((item) => item.id === task.recurringTaskId && item.active);
+  const linkedSeries = context?.recurringTasks.find((item) => item.id === task.recurringTaskId);
+  const series = linkedSeries?.active ? linkedSeries : undefined;
   const [draftRepeat, setDraftRepeat] = useState<TaskRepeat>(series?.repeat ?? "none");
+  const [isChoosingRepeat, setIsChoosingRepeat] = useState(false);
   const editId = useId();
   const deleteLabel = task.recurringTaskId ? "Delete this occurrence" : task.period === "week" ? "Delete weekly task" : "Delete task";
   const menuActions: TaskMenuAction[] = [
-    { label: "Edit", onSelect: () => { setDraft(task.title); setDraftCategory(task.category ?? ""); setDraftRepeat(series?.repeat ?? "none"); setIsEditing(true); } },
+    { label: "Edit", onSelect: () => { setDraft(task.title); setDraftCategory(task.category ?? ""); setDraftRepeat(series?.repeat ?? "none"); setIsChoosingRepeat(false); setIsEditing(true); } },
   ];
+  if (context && !linkedSeries) {
+    menuActions.push({ label: "Make recurring", onSelect: () => { setDraftRepeat("none"); setIsEditing(false); setIsChoosingRepeat(true); } });
+  }
   if (context && task.period === "day" && task.periodKey === context.todayKey) {
     menuActions.push({ label: task.recurringTaskId ? "Move this occurrence to this week" : "Move to this week", onSelect: () => context.onMoveToWeek(task.id) });
   }
@@ -63,7 +69,11 @@ function TaskItem({
       menuActions.push({ label: "Show in Today", onSelect: () => context.onShowInToday?.(task.id) });
     }
   }
-  if (series && context) menuActions.push({ label: "Stop repeating", onSelect: () => context.onStopRepeating(series.id) });
+  if (linkedSeries && context) {
+    menuActions.push(linkedSeries.active
+      ? { label: "Stop repeating", onSelect: () => context.onStopRepeating(linkedSeries.id) }
+      : { label: "Resume repeating", onSelect: () => context.onResumeRepeating(linkedSeries.id) });
+  }
   menuActions.push({ label: deleteLabel, danger: true, onSelect: () => setIsConfirmingDelete(true) });
 
   function saveEdit(event: FormEvent<HTMLFormElement>) {
@@ -72,6 +82,13 @@ function TaskItem({
     if (!title) return;
     onUpdate(task.id, { title, category: draftCategory.trim() || undefined, repeat: draftRepeat });
     setIsEditing(false);
+  }
+
+  function saveRepeat(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (draftRepeat === "none") return;
+    onUpdate(task.id, { repeat: draftRepeat });
+    setIsChoosingRepeat(false);
   }
 
   return (
@@ -134,6 +151,22 @@ function TaskItem({
             <CategoryBadge category={task.category} />
             {series && <span className="task-repeat-label">{repeatLabel(series.repeat)}</span>}
             {sourceLabel && <span className="task-origin">{sourceLabel}</span>}
+            {isChoosingRepeat && (
+              <form className="task-repeat-picker" onSubmit={saveRepeat}>
+                <RepeatInput
+                  id={`${editId}-new-repeat`}
+                  value={draftRepeat}
+                  period={task.period}
+                  allowNone={false}
+                  autoFocus
+                  onChange={setDraftRepeat}
+                />
+                <div className="task-repeat-picker-actions">
+                  <button className="text-button" type="submit" data-sound="save" disabled={draftRepeat === "none"}>Save repeat</button>
+                  <button className="text-button muted-button" type="button" onClick={() => setIsChoosingRepeat(false)}>Cancel</button>
+                </div>
+              </form>
+            )}
           </>
         )}
       </div>

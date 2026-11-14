@@ -47,6 +47,30 @@ test("daily repeats preserve the original and create exactly one fresh task at L
   assert.equal(recurrence.materializeRecurringTasks(JSON.parse(JSON.stringify(next)), "2026-11-12T10:00:00Z").tasks.length, 2);
 });
 
+test("making an existing daily task recurring preserves it and creates fresh future occurrences", () => {
+  const original = task("manual-task", {
+    period: "day",
+    periodKey: today,
+    title: "Review notes",
+    category: "Work",
+    status: "doing",
+  });
+  const data = { ...workspace.emptyWorkspace(), tasks: [original] };
+  const recurring = recurrence.setTaskRepeat(data, original.id, "daily", "manual-series", now);
+  assert.equal(recurring.tasks.length, 1);
+  assert.equal(recurring.tasks[0].id, original.id);
+  assert.equal(recurring.tasks[0].title, original.title);
+  assert.equal(recurring.tasks[0].category, original.category);
+  assert.equal(recurring.tasks[0].status, original.status);
+  assert.equal(recurring.tasks[0].createdAt, original.createdAt);
+  assert.equal(recurring.tasks[0].recurringTaskId, "manual-series");
+  const nextDay = recurrence.materializeRecurringTasks(recurring, "2026-11-11T23:00:00Z");
+  assert.equal(nextDay.tasks.length, 2);
+  assert.equal(nextDay.tasks[1].periodKey, tomorrow);
+  assert.equal(nextDay.tasks[1].status, "todo");
+  assert.equal(nextDay.tasks[1].id, "repeat:manual-series:2026-11-12");
+});
+
 test("weekdays skip weekends, weekly daily tasks keep their weekday, and weekly lists reset on Monday", () => {
   const weekdays = recurringFixture("weekdays");
   assert.equal(recurrence.materializeRecurringTasks(weekdays, "2026-11-14T12:00:00Z"), weekdays);

@@ -777,6 +777,26 @@ button:disabled {
   flex: 0 1 220px;
 }
 
+.task-repeat-picker {
+  display: flex;
+  min-width: 0;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 2px;
+}
+
+.task-repeat-picker .repeat-input {
+  flex: 0 1 260px;
+}
+
+.task-repeat-picker-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .recurring-panel {
   margin-top: 24px;
   padding: 16px;

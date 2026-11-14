@@ -20,7 +20,7 @@ import { TaskBoard, TaskCollection } from "@/app/components/task-collection";
 import { CategoryFilter } from "@/app/components/category-controls";
 import StorageNotice from "@/app/components/storage-notice";
 import { copyTaskToPeriod, selectPlannerTasks, setWeeklyDismissal } from "@/app/lib/planner";
-import { deleteTaskOccurrence, editRepeatingTask, moveTaskOccurrenceToWeek, moveWeeklyOccurrenceToNextWeek, setTaskRepeat, stopRecurringTask, type TaskEditChange } from "@/app/lib/recurrence";
+import { deleteTaskOccurrence, editRepeatingTask, moveTaskOccurrenceToWeek, moveWeeklyOccurrenceToNextWeek, setRecurringScheduleActive, setTaskRepeat, stopRecurringTask, type TaskEditChange } from "@/app/lib/recurrence";
 import { RecurringTasksPanel } from "@/app/components/repeat-controls";
 import { assignWorkspaceCategory, changeWorkspaceSettings, getWorkspaceCategories, getWorkspaceSettings, type SettingsPatch } from "@/app/lib/workspace-settings";
 
@@ -275,6 +275,11 @@ export default function Dashboard() {
     updateWorkspace((current) => stopRecurringTask(current, seriesId, now));
   }
 
+  function resumeRepeating(seriesId: string) {
+    const now = new Date().toISOString();
+    updateWorkspace((current) => setRecurringScheduleActive(current, seriesId, true, now));
+  }
+
   function setDismissed(taskId: string, dismissed: boolean) {
     const now = new Date().toISOString();
     updateWorkspace((current) => ({ ...current, tasks: setWeeklyDismissal(current.tasks, taskId, dismissed, now) }));
@@ -288,6 +293,7 @@ export default function Dashboard() {
     onShowInToday: (taskId: string) => setDismissed(taskId, false),
     recurringTasks: data.recurringTasks ?? [],
     onStopRepeating: stopRepeating,
+    onResumeRepeating: resumeRepeating,
   };
 
   function deleteTask(taskId: string) {
