@@ -20,7 +20,7 @@ import { TaskBoard, TaskCollection } from "@/app/components/task-collection";
 import { CategoryFilter } from "@/app/components/category-controls";
 import StorageNotice from "@/app/components/storage-notice";
 import { copyTaskToPeriod, selectPlannerTasks, setWeeklyDismissal } from "@/app/lib/planner";
-import { deleteTaskOccurrence, editRepeatingTask, moveTaskOccurrenceToWeek, setTaskRepeat, stopRecurringTask, type TaskEditChange } from "@/app/lib/recurrence";
+import { deleteTaskOccurrence, editRepeatingTask, moveTaskOccurrenceToWeek, moveWeeklyOccurrenceToNextWeek, setTaskRepeat, stopRecurringTask, type TaskEditChange } from "@/app/lib/recurrence";
 import { RecurringTasksPanel } from "@/app/components/repeat-controls";
 import { assignWorkspaceCategory, changeWorkspaceSettings, getWorkspaceCategories, getWorkspaceSettings, type SettingsPatch } from "@/app/lib/workspace-settings";
 
@@ -218,7 +218,9 @@ export default function Dashboard() {
   const { dayTasks, weekTasks, currentTasks } = selectPlannerTasks(data.tasks, todayKey);
   const visibleCurrentTasks = filterByCategory(currentTasks, combinedCategory);
   const pastDayKeys = [...new Set(data.tasks.filter((task) => task.period === "day" && task.periodKey !== todayKey).map((task) => task.periodKey))].sort().reverse();
-  const pastWeekKeys = [...new Set(data.tasks.filter((task) => task.period === "week" && task.periodKey !== weekKey).map((task) => task.periodKey))].sort().reverse();
+  const pastWeekKeys = weekKey
+    ? [...new Set(data.tasks.filter((task) => task.period === "week" && task.periodKey < weekKey).map((task) => task.periodKey))].sort().reverse()
+    : [];
   const historyKeys = historyPeriod === "day" ? pastDayKeys : pastWeekKeys;
   const selectedHistoryKey = historyKeys.includes(historySelection) ? historySelection : historyKeys[0] ?? "";
   const historyTasks = selectedHistoryKey
@@ -263,6 +265,11 @@ export default function Dashboard() {
     updateWorkspace((current) => moveTaskOccurrenceToWeek(current, taskId, now));
   }
 
+  function moveToNextWeek(taskId: string) {
+    const now = new Date().toISOString();
+    updateWorkspace((current) => moveWeeklyOccurrenceToNextWeek(current, taskId, now));
+  }
+
   function stopRepeating(seriesId: string) {
     const now = new Date().toISOString();
     updateWorkspace((current) => stopRecurringTask(current, seriesId, now));
@@ -275,7 +282,9 @@ export default function Dashboard() {
 
   const taskContext = {
     todayKey: todayKey ?? "",
+    weekKey: weekKey ?? "",
     onMoveToWeek: moveToWeek,
+    onMoveToNextWeek: moveToNextWeek,
     onShowInToday: (taskId: string) => setDismissed(taskId, false),
     recurringTasks: data.recurringTasks ?? [],
     onStopRepeating: stopRepeating,

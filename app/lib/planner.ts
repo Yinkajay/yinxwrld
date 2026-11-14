@@ -1,4 +1,4 @@
-import { getLagosDayKey, getWeekStartKey, type Task } from "./workspace";
+import { addDaysToKey, getLagosDayKey, getWeekStartKey, type Task } from "./workspace";
 
 export type TaskChange = Partial<Pick<Task, "title" | "status" | "category">>;
 
@@ -46,6 +46,18 @@ export function moveDailyTaskToWeek(tasks: Task[], taskId: string, now: string) 
     dismissedOn: undefined,
     completedAt: task.status === "done"
       ? (task.completedAt && getLagosDayKey(new Date(task.completedAt)) === today ? task.completedAt : now) : undefined,
+    updatedAt: now,
+  } : task);
+}
+
+export function moveWeeklyTaskToNextWeek(tasks: Task[], taskId: string, now: string) {
+  const today = getLagosDayKey(new Date(now));
+  const currentWeek = getWeekStartKey(today);
+  const nextWeek = addDaysToKey(currentWeek, 7);
+  return tasks.map((task) => task.id === taskId && task.status !== "done" && task.period === "week" && task.periodKey === currentWeek ? {
+    ...task,
+    periodKey: nextWeek,
+    dismissedOn: undefined,
     updatedAt: now,
   } : task);
 }

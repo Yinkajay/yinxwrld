@@ -17,7 +17,9 @@ const statuses: { value: TaskStatus; label: string }[] = [
 
 export type TaskContextActions = {
   todayKey: string;
+  weekKey: string;
   onMoveToWeek: (taskId: string) => void;
+  onMoveToNextWeek: (taskId: string) => void;
   onDismissForToday?: (taskId: string) => void;
   onShowInToday?: (taskId: string) => void;
   recurringTasks: RecurringTask[];
@@ -51,6 +53,9 @@ function TaskItem({
   ];
   if (context && task.period === "day" && task.periodKey === context.todayKey) {
     menuActions.push({ label: task.recurringTaskId ? "Move this occurrence to this week" : "Move to this week", onSelect: () => context.onMoveToWeek(task.id) });
+  }
+  if (context && task.status !== "done" && task.period === "week" && task.periodKey === context.weekKey) {
+    menuActions.push({ label: task.recurringTaskId ? "Move this occurrence to next week" : "Move to next week", onSelect: () => context.onMoveToNextWeek(task.id) });
   }
   if (context && task.period === "week") {
     if (context.onDismissForToday) menuActions.push({ label: "Dismiss for today", onSelect: () => context.onDismissForToday?.(task.id) });

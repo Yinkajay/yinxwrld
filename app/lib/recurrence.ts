@@ -1,4 +1,4 @@
-import { changeTask, moveDailyTaskToWeek, type TaskChange } from "./planner";
+import { changeTask, moveDailyTaskToWeek, moveWeeklyTaskToNextWeek, type TaskChange } from "./planner";
 import { getLagosDayKey, getWeekStartKey, type RecurringTask, type Task, type TaskRepeat, type WorkspaceData } from "./workspace";
 import { assignWorkspaceCategory, nextWeekday, WorkspaceInputError } from "./workspace-settings";
 
@@ -143,5 +143,16 @@ export function moveTaskOccurrenceToWeek(data: WorkspaceData, taskId: string, no
   if (!task || task.period !== "day" || task.periodKey !== today) return data;
   const next = skipOccurrence(data, task, now);
   return { ...next, tasks: moveDailyTaskToWeek(next.tasks, taskId, now).map((item) => item.id === taskId
+    ? { ...item, recurringTaskId: undefined } : item) };
+}
+
+/** Defers this week's scheduled occurrence while preserving it for next week. */
+export function moveWeeklyOccurrenceToNextWeek(data: WorkspaceData, taskId: string, now: string): WorkspaceData {
+  const task = data.tasks.find((item) => item.id === taskId);
+  const currentWeek = getWeekStartKey(getLagosDayKey(new Date(now)));
+  if (!task || task.status === "done" || task.period !== "week" || task.periodKey !== currentWeek) return data;
+
+  const next = skipOccurrence(data, task, now);
+  return { ...next, tasks: moveWeeklyTaskToNextWeek(next.tasks, taskId, now).map((item) => item.id === taskId
     ? { ...item, recurringTaskId: undefined } : item) };
 }
