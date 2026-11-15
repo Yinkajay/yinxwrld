@@ -12,7 +12,7 @@ import {
   addWorkspaceCategory, changeWorkspaceSettings, countCategoryReferences, getWorkspaceCategories, getWorkspaceSettings,
   removeWorkspaceCategory, renameWorkspaceCategory, type SettingsPatch,
 } from "@/app/lib/workspace-settings";
-import { MAX_CATEGORY_LENGTH, type RecurringTask, type TaskRepeat, type WorkspaceScene, type WorkspaceSettings } from "@/app/lib/workspace";
+import { MAX_CATEGORY_LENGTH, type PlannerCardStyle, type RecurringTask, type TaskRepeat, type WorkspaceScene, type WorkspaceSettings } from "@/app/lib/workspace";
 
 const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const scenes: { value: WorkspaceScene; label: string }[] = [
@@ -196,6 +196,14 @@ export default function SettingsWorkspace() {
               <span className="background-choice-label"><input type="radio" name={`background-${page}`} checked={settings.backgrounds[page] === scene.value} onChange={() => change({ backgrounds: { [page]: scene.value } })} />{scene.label}</span>
             </label>)}</div>
           </fieldset>)}
+        </div>
+        <div className="planner-card-style-setting">
+          <SelectSetting id="planner-card-style" label="Planner list cards" value={settings.plannerCardStyle}
+            onChange={(plannerCardStyle) => change({ plannerCardStyle: plannerCardStyle as PlannerCardStyle })}>
+            <option value="soft">Soft glass</option>
+            <option value="ruled-paper">Ruled paper</option>
+          </SelectSetting>
+          <p className="settings-description">Choose the surface for your daily and weekly lists.</p>
         </div>
         <label className="settings-toggle"><input type="checkbox" checked={settings.showDailyFooter} onChange={(event) => change({ showDailyFooter: event.target.checked })} /><span>Show the daily quote or prompt</span></label>
       </section>

@@ -507,6 +507,7 @@ export default function Dashboard() {
               title="Today"
               detail={formatDayLabel(todayKey, { weekday: undefined })}
               tasks={dayTasks}
+              cardStyle={settings.plannerCardStyle}
               categories={categories}
               selectedCategory={dayCategory}
               onCategoryChange={setDayCategory}
@@ -524,6 +525,7 @@ export default function Dashboard() {
                 title="This week"
                 detail={formatWeekRange(weekKey)}
                 tasks={weekTasks}
+                cardStyle={settings.plannerCardStyle}
                 categories={categories}
                 selectedCategory={weekCategory}
                 onCategoryChange={setWeekCategory}

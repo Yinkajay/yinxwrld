@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, type DragEvent, type FormEvent } from "react";
-import type { RecurringTask, Task, TaskPeriod, TaskRepeat, TaskStatus } from "@/app/lib/workspace";
+import type { PlannerCardStyle, RecurringTask, Task, TaskPeriod, TaskRepeat, TaskStatus } from "@/app/lib/workspace";
 import { repeatLabel, type TaskEditChange } from "@/app/lib/recurrence";
 import { RepeatInput } from "./repeat-controls";
 import TaskMenu, { type TaskMenuAction } from "./task-menu";
@@ -336,6 +336,7 @@ export function TaskCollection({
   detail,
   tasks,
   view,
+  cardStyle,
   onViewChange,
   onAddTask,
   onUpdateTask,
@@ -351,6 +352,7 @@ export function TaskCollection({
   detail: string;
   tasks: Task[];
   view: "list" | "board";
+  cardStyle: PlannerCardStyle;
   onViewChange: (view: "list" | "board") => void;
   onAddTask: (title: string, period: TaskPeriod, periodKey: string, category: string, repeat: TaskRepeat) => void;
   onUpdateTask: (taskId: string, change: TaskEditChange) => void;
@@ -385,7 +387,7 @@ export function TaskCollection({
   }
 
   return (
-    <section className={`task-panel task-panel-${period}`} aria-labelledby={titleId}>
+    <section className={`task-panel task-panel-${period}${cardStyle === "ruled-paper" ? " task-panel-ruled-paper" : ""}`} aria-labelledby={titleId}>
       <header className="task-panel-heading">
         <div>
           <p className="panel-kicker">{period === "day" ? "DAILY LIST" : "WEEKLY LIST"}</p>

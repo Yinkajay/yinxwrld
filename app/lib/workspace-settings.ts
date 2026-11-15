@@ -1,20 +1,26 @@
 import {
   BUILT_IN_CATEGORIES, MAX_CATEGORY_LENGTH, addDaysToKey, getCategoryOptions,
-  mergeCategoryLists, type WorkspaceData, type WorkspaceSettings,
+  mergeCategoryLists, type ResolvedWorkspaceSettings, type WorkspaceData, type WorkspaceSettings,
 } from "./workspace";
 
-export const DEFAULT_SETTINGS: WorkspaceSettings = {
+export const DEFAULT_SETTINGS: ResolvedWorkspaceSettings = {
   backgrounds: { home: "sunset", creative: "winter", settings: "sunset" },
   showDailyFooter: true,
   plannerLayout: "today",
   dayView: "list",
   weekView: "list",
+  plannerCardStyle: "soft",
 };
 
 export class WorkspaceInputError extends Error {}
 
-export function getWorkspaceSettings(data: WorkspaceData): WorkspaceSettings {
-  return data.settings ?? DEFAULT_SETTINGS;
+export function getWorkspaceSettings(data: WorkspaceData): ResolvedWorkspaceSettings {
+  const saved = data.settings;
+  return {
+    ...DEFAULT_SETTINGS,
+    ...saved,
+    backgrounds: { ...DEFAULT_SETTINGS.backgrounds, ...saved?.backgrounds },
+  };
 }
 
 export type SettingsPatch = Partial<Omit<WorkspaceSettings, "backgrounds">> & {

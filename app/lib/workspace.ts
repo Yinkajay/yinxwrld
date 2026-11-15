@@ -10,13 +10,16 @@ export type TaskRepeat = "none" | "daily" | "weekdays" | "weekly";
 export type WorkspaceScene = "sunset" | "winter";
 export type PlannerLayout = "today" | "both" | "combined";
 export type TaskView = "list" | "board";
+export type PlannerCardStyle = "soft" | "ruled-paper";
 export type WorkspaceSettings = {
   backgrounds: { home: WorkspaceScene; creative: WorkspaceScene; settings: WorkspaceScene };
   showDailyFooter: boolean;
   plannerLayout: PlannerLayout;
   dayView: TaskView;
   weekView: TaskView;
+  plannerCardStyle?: PlannerCardStyle;
 };
+export type ResolvedWorkspaceSettings = Omit<WorkspaceSettings, "plannerCardStyle"> & { plannerCardStyle: PlannerCardStyle };
 
 export type RecurringTask = {
   id: string;
@@ -214,7 +217,8 @@ function isWorkspaceSettings(value: unknown): value is WorkspaceSettings {
   const isView = (view: unknown) => view === "list" || view === "board";
   return isScene(value.backgrounds.home) && isScene(value.backgrounds.creative) && isScene(value.backgrounds.settings) &&
     typeof value.showDailyFooter === "boolean" &&
-    ["today", "both", "combined"].includes(value.plannerLayout as string) && isView(value.dayView) && isView(value.weekView);
+    ["today", "both", "combined"].includes(value.plannerLayout as string) && isView(value.dayView) && isView(value.weekView) &&
+    (value.plannerCardStyle === undefined || value.plannerCardStyle === "soft" || value.plannerCardStyle === "ruled-paper");
 }
 
 export function isWorkspaceData(value: unknown): value is WorkspaceData {
@@ -407,10 +411,17 @@ const DAILY_FOOTER_ITEMS: DailyFooterItem[] = [
   { kind: "prompt", text: "What is one thing you want to remember from this season?" },
 ];
 
+const DAILY_FOOTER_ROTATION_ANCHOR = "2026-11-15";
+// Keep the first expanded day on the thought that is already live today.
+const DAILY_FOOTER_ROTATION_ANCHOR_INDEX = 12;
+
 export function getDailyFooterItem(dayKey: string) {
   const [year, month, day] = dayKey.split("-").map(Number);
   const dayNumber = Math.floor(Date.UTC(year, month - 1, day) / 86_400_000);
-  const index = ((dayNumber % DAILY_FOOTER_ITEMS.length) + DAILY_FOOTER_ITEMS.length) % DAILY_FOOTER_ITEMS.length;
+  const [anchorYear, anchorMonth, anchorDay] = DAILY_FOOTER_ROTATION_ANCHOR.split("-").map(Number);
+  const anchorDayNumber = Math.floor(Date.UTC(anchorYear, anchorMonth - 1, anchorDay) / 86_400_000);
+  const offset = DAILY_FOOTER_ROTATION_ANCHOR_INDEX + dayNumber - anchorDayNumber;
+  const index = ((offset % DAILY_FOOTER_ITEMS.length) + DAILY_FOOTER_ITEMS.length) % DAILY_FOOTER_ITEMS.length;
   return DAILY_FOOTER_ITEMS[index];
 }
 

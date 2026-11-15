@@ -586,6 +586,27 @@ button:disabled {
   container-type: inline-size;
 }
 
+.task-panel-ruled-paper {
+  border-color: #e4dcc8;
+  background-color: rgb(255 254 247 / 98%);
+  background-image:
+    linear-gradient(90deg, transparent 0 44px, rgb(194 100 104 / 24%) 44px 45px, transparent 45px),
+    repeating-linear-gradient(to bottom, transparent 0 31px, rgb(105 148 190 / 18%) 31px 32px);
+  box-shadow: 0 18px 46px rgb(29 37 49 / 18%), inset 0 1px rgb(255 255 255 / 80%);
+}
+
+.task-panel-ruled-paper .task-panel-heading h2,
+.task-panel-ruled-paper .task-title,
+.task-panel-ruled-paper .add-task-form input {
+  color: #3e4c5c;
+  font-family: "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive;
+  font-weight: 500;
+}
+
+.task-panel-ruled-paper .task-item {
+  border-bottom-color: rgb(105 148 190 / 18%);
+}
+
 .task-panel-heading {
   display: flex;
   align-items: center;
@@ -2004,6 +2025,15 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
+}
+
+.planner-card-style-setting {
+  max-width: 360px;
+  margin-top: 24px;
+}
+
+.planner-card-style-setting .settings-description {
+  margin-bottom: 0;
 }
 
 .settings-select,
