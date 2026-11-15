@@ -19,6 +19,7 @@ export type TaskContextActions = {
   todayKey: string;
   weekKey: string;
   onMoveToWeek: (taskId: string) => void;
+  onMoveToTomorrow: (taskId: string) => void;
   onMoveToNextWeek: (taskId: string) => void;
   onDismissForToday?: (taskId: string) => void;
   onShowInToday?: (taskId: string) => void;
@@ -58,6 +59,7 @@ function TaskItem({
     menuActions.push({ label: "Make recurring", onSelect: () => { setDraftRepeat("none"); setIsEditing(false); setIsChoosingRepeat(true); } });
   }
   if (context && task.period === "day" && task.periodKey === context.todayKey) {
+    menuActions.push({ label: task.recurringTaskId ? "Move this occurrence to tomorrow" : "Move to tomorrow", onSelect: () => context.onMoveToTomorrow(task.id) });
     menuActions.push({ label: task.recurringTaskId ? "Move this occurrence to this week" : "Move to this week", onSelect: () => context.onMoveToWeek(task.id) });
   }
   if (context && task.status !== "done" && task.period === "week" && task.periodKey === context.weekKey) {

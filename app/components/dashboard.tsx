@@ -20,7 +20,7 @@ import { RecurringTaskSection, TaskBoard, TaskCollection } from "@/app/component
 import { CategoryBadge, CategoryFilter } from "@/app/components/category-controls";
 import StorageNotice from "@/app/components/storage-notice";
 import { bringFutureTaskToCurrentPeriod, copyTaskToPeriod, selectLookaheadTasks, selectPlannerTasks, setWeeklyDismissal } from "@/app/lib/planner";
-import { deleteTaskOccurrence, editRepeatingTask, moveTaskOccurrenceToWeek, moveWeeklyOccurrenceToNextWeek, setRecurringScheduleActive, setTaskRepeat, stopRecurringTask, type TaskEditChange } from "@/app/lib/recurrence";
+import { deleteTaskOccurrence, editRepeatingTask, moveTaskOccurrenceToTomorrow, moveTaskOccurrenceToWeek, moveWeeklyOccurrenceToNextWeek, setRecurringScheduleActive, setTaskRepeat, stopRecurringTask, type TaskEditChange } from "@/app/lib/recurrence";
 import { assignWorkspaceCategory, changeWorkspaceSettings, getWorkspaceCategories, getWorkspaceSettings, type SettingsPatch } from "@/app/lib/workspace-settings";
 
 type RolloverReview = {
@@ -338,6 +338,11 @@ export default function Dashboard() {
     updateWorkspace((current) => moveTaskOccurrenceToWeek(current, taskId, now));
   }
 
+  function moveToTomorrow(taskId: string) {
+    const now = new Date().toISOString();
+    updateWorkspace((current) => moveTaskOccurrenceToTomorrow(current, taskId, now));
+  }
+
   function moveToNextWeek(taskId: string) {
     const now = new Date().toISOString();
     updateWorkspace((current) => moveWeeklyOccurrenceToNextWeek(current, taskId, now));
@@ -371,6 +376,7 @@ export default function Dashboard() {
     todayKey: todayKey ?? "",
     weekKey: weekKey ?? "",
     onMoveToWeek: moveToWeek,
+    onMoveToTomorrow: moveToTomorrow,
     onMoveToNextWeek: moveToNextWeek,
     onShowInToday: (taskId: string) => setDismissed(taskId, false),
     recurringTasks: data.recurringTasks ?? [],
