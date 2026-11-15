@@ -290,7 +290,6 @@ export function RecurringTaskSection({ tasks, schedules, context, categories, on
   return (
     <details className="recurring-panel" open>
       <summary>Repeating tasks <span>{count}</span></summary>
-      <p>Each task stays here. Completing it updates this occurrence only.</p>
       {tasks.length > 0 && (
         <ul className="task-list recurring-task-list">
           {tasks.map((task) => (
