@@ -8,7 +8,6 @@ import TaskMenu, { type TaskMenuAction } from "./task-menu";
 import { CategoryBadge, CategoryFilter, CategoryInput } from "./category-controls";
 import { filterByCategory } from "@/app/lib/workspace";
 import { useSounds } from "@/app/hooks/use-sounds";
-import { RecurringTasksPanel } from "./repeat-controls";
 
 const statuses: { value: TaskStatus; label: string }[] = [
   { value: "todo", label: "To do" },
@@ -150,7 +149,7 @@ function TaskItem({
           <>
             <span className="task-title">{task.title}</span>
             <CategoryBadge category={task.category} />
-            {series && <span className="task-repeat-label">{repeatLabel(series.repeat)}</span>}
+            {linkedSeries && <span className="task-repeat-label">{repeatLabel(linkedSeries.repeat)}{linkedSeries.active ? "" : " · Paused"}</span>}
             {sourceLabel && <span className="task-origin">{sourceLabel}</span>}
             {isChoosingRepeat && (
               <form className="task-repeat-picker" onSubmit={saveRepeat}>
@@ -276,6 +275,61 @@ export function TaskBoard({
   );
 }
 
+export function RecurringTaskSection({ tasks, schedules, context, categories, onUpdate, onDelete, sourceLabel }: {
+  tasks: Task[];
+  schedules: RecurringTask[];
+  context?: TaskContextActions;
+  categories: string[];
+  onUpdate: (taskId: string, change: TaskEditChange) => void;
+  onDelete: (taskId: string) => void;
+  sourceLabel?: (task: Task) => string;
+}) {
+  const count = tasks.length + schedules.length;
+  if (!count) return null;
+
+  return (
+    <details className="recurring-panel" open>
+      <summary>Repeating tasks <span>{count}</span></summary>
+      <p>Each task stays here. Completing it updates this occurrence only.</p>
+      {tasks.length > 0 && (
+        <ul className="task-list recurring-task-list">
+          {tasks.map((task) => (
+            <li key={task.id}>
+              <TaskItem task={task} sourceLabel={sourceLabel?.(task)} context={context} categories={categories} onUpdate={onUpdate} onDelete={onDelete} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {schedules.length > 0 && (
+        <ul className="recurring-schedule-list">
+          {schedules.map((schedule) => (
+            <li key={schedule.id}>
+              <div>
+                <strong>{schedule.title}</strong>
+                <span>{repeatLabel(schedule.repeat)} · {schedule.period === "week" ? "This week" : "Today"}
+                  {schedule.period === "day" && schedule.repeat === "weekly" ? ` · ${new Intl.DateTimeFormat("en", { weekday: "long", timeZone: "Africa/Lagos" }).format(new Date(`${schedule.startKey}T12:00:00Z`))}` : ""}
+                  {!schedule.active ? " · Paused" : ""}
+                </span>
+              </div>
+              {context && (
+                <button
+                  className="text-button"
+                  type="button"
+                  data-sound="save"
+                  aria-label={`${schedule.active ? "Stop" : "Resume"} repeating ${schedule.title}`}
+                  onClick={() => schedule.active ? context.onStopRepeating(schedule.id) : context.onResumeRepeating(schedule.id)}
+                >
+                  {schedule.active ? "Stop repeating" : "Resume repeating"}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </details>
+  );
+}
+
 export function TaskCollection({
   period,
   periodKey,
@@ -291,8 +345,6 @@ export function TaskCollection({
   categories,
   selectedCategory,
   onCategoryChange,
-  recurringTasks = [],
-  onStopRepeating,
 }: {
   period: TaskPeriod;
   periodKey: string;
@@ -308,14 +360,19 @@ export function TaskCollection({
   categories: string[];
   selectedCategory: string;
   onCategoryChange: (category: string) => void;
-  recurringTasks?: RecurringTask[];
-  onStopRepeating?: (seriesId: string) => void;
 }) {
   const [newTask, setNewTask] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState("");
   const [newTaskRepeat, setNewTaskRepeat] = useState<TaskRepeat>("none");
   const titleId = useId();
   const visibleTasks = filterByCategory(tasks, selectedCategory);
+  const repeatingTasks = visibleTasks.filter((task) => Boolean(task.recurringTaskId));
+  const regularTasks = visibleTasks.filter((task) => !task.recurringTaskId);
+  const taskScheduleIds = new Set(tasks.map((task) => task.recurringTaskId).filter((id): id is string => Boolean(id)));
+  const unsurfacedSchedules = filterByCategory(
+    (context?.recurringTasks ?? []).filter((schedule) => schedule.period === period && !taskScheduleIds.has(schedule.id)),
+    selectedCategory,
+  );
   const sourceLabel = (task: Task) => period === "day" && task.period === "week" ? "From this week’s list" : "";
 
   function submitTask(event: FormEvent<HTMLFormElement>) {
@@ -385,9 +442,9 @@ export function TaskCollection({
           <p>No {title.toLowerCase()} in {selectedCategory}.</p>
           <button className="text-button" type="button" onClick={() => onCategoryChange("")}>Show all categories</button>
         </div>
-      ) : view === "list" ? (
+      ) : regularTasks.length === 0 ? null : view === "list" ? (
         <ul className="task-list">
-          {visibleTasks.map((task) => (
+          {regularTasks.map((task) => (
             <li key={task.id}>
               <TaskItem task={task} sourceLabel={sourceLabel(task)} context={context} categories={categories} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
             </li>
@@ -400,7 +457,15 @@ export function TaskCollection({
         <span>{visibleTasks.length} {visibleTasks.length === 1 ? "task" : "tasks"}</span>
         <span>{visibleTasks.filter((task) => task.status === "done").length} done</span>
       </div>
-      {period === "day" && onStopRepeating && <RecurringTasksPanel tasks={recurringTasks} onStop={onStopRepeating} />}
+      <RecurringTaskSection
+        tasks={repeatingTasks}
+        schedules={unsurfacedSchedules}
+        context={context}
+        categories={categories}
+        onUpdate={onUpdateTask}
+        onDelete={onDeleteTask}
+        sourceLabel={sourceLabel}
+      />
     </section>
   );
 }

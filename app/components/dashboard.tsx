@@ -16,12 +16,11 @@ import {
   type TaskRepeat,
   type WorkspaceData,
 } from "@/app/lib/workspace";
-import { TaskBoard, TaskCollection } from "@/app/components/task-collection";
+import { RecurringTaskSection, TaskBoard, TaskCollection } from "@/app/components/task-collection";
 import { CategoryBadge, CategoryFilter } from "@/app/components/category-controls";
 import StorageNotice from "@/app/components/storage-notice";
 import { bringFutureTaskToCurrentPeriod, copyTaskToPeriod, selectLookaheadTasks, selectPlannerTasks, setWeeklyDismissal } from "@/app/lib/planner";
 import { deleteTaskOccurrence, editRepeatingTask, moveTaskOccurrenceToWeek, moveWeeklyOccurrenceToNextWeek, setRecurringScheduleActive, setTaskRepeat, stopRecurringTask, type TaskEditChange } from "@/app/lib/recurrence";
-import { RecurringTasksPanel } from "@/app/components/repeat-controls";
 import { assignWorkspaceCategory, changeWorkspaceSettings, getWorkspaceCategories, getWorkspaceSettings, type SettingsPatch } from "@/app/lib/workspace-settings";
 
 type RolloverReview = {
@@ -284,6 +283,13 @@ export default function Dashboard() {
     return groups;
   }, []);
   const visibleCurrentTasks = filterByCategory(currentTasks, combinedCategory);
+  const repeatingCurrentTasks = visibleCurrentTasks.filter((task) => Boolean(task.recurringTaskId));
+  const regularCurrentTasks = visibleCurrentTasks.filter((task) => !task.recurringTaskId);
+  const currentRecurringIds = new Set(currentTasks.map((task) => task.recurringTaskId).filter((id): id is string => Boolean(id)));
+  const unsurfacedRecurringSchedules = filterByCategory(
+    (data.recurringTasks ?? []).filter((schedule) => !currentRecurringIds.has(schedule.id)),
+    combinedCategory,
+  );
   const pastDayKeys = [...new Set(data.tasks.filter((task) => task.period === "day" && todayKey !== null && task.periodKey < todayKey).map((task) => task.periodKey))].sort().reverse();
   const pastWeekKeys = weekKey
     ? [...new Set(data.tasks.filter((task) => task.period === "week" && task.periodKey < weekKey).map((task) => task.periodKey))].sort().reverse()
@@ -464,29 +470,37 @@ export default function Dashboard() {
                 <span className="task-total-pill">{visibleCurrentTasks.length} {visibleCurrentTasks.length === 1 ? "task" : "tasks"}</span>
               </div>
             </div>
-            {visibleCurrentTasks.length ? (
+            {regularCurrentTasks.length ? (
               <TaskBoard
-                tasks={visibleCurrentTasks}
+                tasks={regularCurrentTasks}
                 sourceLabel={(task) => task.period === "day" ? "Today" : "This week"}
                 onUpdate={updateTask}
                 onDelete={deleteTask}
                 context={taskContext}
                 categories={categories}
               />
-            ) : currentTasks.length ? (
+            ) : currentTasks.length && visibleCurrentTasks.length === 0 ? (
               <div className="combined-empty empty-state">
                 <span className="empty-mark" aria-hidden="true">⌕</span>
                 <p>No tasks in {combinedCategory}.</p>
                 <button className="text-button" type="button" onClick={() => setCombinedCategory("")}>Show all categories</button>
               </div>
-            ) : (
+            ) : currentTasks.length === 0 ? (
               <div className="combined-empty empty-state">
                 <span className="empty-mark" aria-hidden="true">⇄</span>
                 <p>Nothing in motion yet.</p>
                 <span>Add tasks to either list and they will meet here.</span>
               </div>
-            )}
-            <RecurringTasksPanel tasks={data.recurringTasks ?? []} onStop={stopRepeating} />
+            ) : null}
+            <RecurringTaskSection
+              tasks={repeatingCurrentTasks}
+              schedules={unsurfacedRecurringSchedules}
+              context={taskContext}
+              categories={categories}
+              onUpdate={updateTask}
+              onDelete={deleteTask}
+              sourceLabel={(task) => task.period === "day" ? "Today" : "This week"}
+            />
           </section>
         ) : (
           <div className={`planner-grid${showWeek ? " is-two-periods" : " is-one-period"}`}>
@@ -505,8 +519,6 @@ export default function Dashboard() {
               onUpdateTask={updateTask}
               onDeleteTask={deleteTask}
               context={{ ...taskContext, onDismissForToday: (taskId) => setDismissed(taskId, true) }}
-              recurringTasks={data.recurringTasks ?? []}
-              onStopRepeating={stopRepeating}
             />
             {showWeek && (
               <TaskCollection
