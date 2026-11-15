@@ -420,11 +420,8 @@ export default function Dashboard() {
         />
       ))}
 
-      <section className="planner-section" aria-labelledby="planner-heading">
+      <section className="planner-section" aria-label={combined ? "Combined planner board" : showWeek ? "Today and this week" : "Today"}>
         <header className="section-heading planner-section-heading">
-          <div>
-            <h2 id="planner-heading">{combined ? "Everything in motion" : showWeek ? "The days ahead" : "Your list"}</h2>
-          </div>
           <div className="planner-heading-actions">
             {!combined && (
               <button
